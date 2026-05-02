@@ -1,6 +1,5 @@
 from tunning import TunnedLogger
 
-
 logger = TunnedLogger.from_yaml(
     "examples/custom_logger.yml",
     name="demo",

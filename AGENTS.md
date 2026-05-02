@@ -23,6 +23,10 @@
 - Verified config smoke test: `./.venv/bin/python -c "from tunning import TunnedLogger; TunnedLogger.from_yaml('examples/custom_logger.yml', name='smoke', force=True)"`.
 - Test suite: `./.venv/bin/python -m pytest`.
 - Focus one test: `./.venv/bin/python -m pytest tests/test_tunned_logger.py -k prompt`.
+- Format check: `./.venv/bin/ruff format --check .`.
+- Lint: `./.venv/bin/ruff check .`.
+- Type check: `./.venv/bin/mypy tunning tests`.
+- Pre-commit: `./.venv/bin/pre-commit run --all-files`.
 - Basic example: `./.venv/bin/python examples/basic_usage.py`.
 
 ## Distribution
@@ -43,6 +47,7 @@
 - If you change public behavior or project direction, update `README.md`, `DESIGN.md`, and this file when relevant.
 - The current roadmap priority is stabilization: add tests around existing behavior before adding new features.
 - Packaging metadata and editable install behavior have been verified; docs URLs are still pending.
+- Quality gates use pytest, Ruff, mypy, pre-commit, and GitHub Actions across Python 3.11 through 3.14.
 
 ## Doc Reliability
 - `README.md` is the user-facing usage guide.
@@ -52,6 +57,7 @@
 
 ## Roadmap
 - Stabilize current behavior with more pytest coverage before adding features.
+- Keep linting, formatting, type checking, and tests passing before adding features.
 - Keep prompt styling separate from log levels. Do not reintroduce `levels.INPUT`.
 - Keep custom level registration strict because stdlib logging level names and codes are process-global.
 - Keep examples under `examples/`, not under the package directory.

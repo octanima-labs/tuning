@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import logging
 import uuid
+from collections.abc import Iterator
 from pathlib import Path
+from typing import Any
 
 import bitmath
 import pytest
@@ -45,7 +47,7 @@ def _console_handler(logger: logging.Logger) -> TunnedHandler:
     raise AssertionError("Expected a TunnedHandler")
 
 
-def _file_handler(logger: logging.Logger) -> logging.Handler:
+def _file_handler(logger: logging.Logger) -> Any:
     for handler in logger.handlers:
         if hasattr(handler, "baseFilename"):
             return handler
@@ -53,7 +55,7 @@ def _file_handler(logger: logging.Logger) -> logging.Handler:
 
 
 @pytest.fixture
-def logger_name() -> str:
+def logger_name() -> Iterator[str]:
     name = f"tests.{uuid.uuid4().hex}"
     yield name
     _drop_logger(name)
@@ -84,7 +86,7 @@ def test_from_yaml_returns_tunned_logger_and_registers_levels(
     assert logging.getLevelName(5) == "TRACE"
 
     file_handler = _file_handler(logger)
-    assert getattr(file_handler, "maxBytes") == int(bitmath.parse_string("5 MB").bytes)
+    assert file_handler.maxBytes == int(bitmath.parse_string("5 MB").bytes)
     assert log_path.parent.exists()
     assert log_path.exists()
 
@@ -110,7 +112,7 @@ def test_prompt_uses_the_first_handler_show_icon_setting(
 
     logger = TunnedLogger.from_yaml(config_path, name=logger_name, force=True)
     handler = _console_handler(logger)
-    captured: dict[str, object] = {}
+    captured: dict[str, Any] = {}
 
     def fake_input(prompt, **kwargs):
         captured["prompt"] = prompt
@@ -191,7 +193,7 @@ def test_from_yaml_is_idempotent_and_force_reconfigures(
     )
     assert logger is reconfigured_logger
     assert _console_handler(reconfigured_logger).show_icon is True
-    assert Path(getattr(_file_handler(reconfigured_logger), "baseFilename")) == log_path_two.resolve()
+    assert Path(_file_handler(reconfigured_logger).baseFilename) == log_path_two.resolve()
 
 
 def test_existing_standard_logger_name_raises(
@@ -244,8 +246,8 @@ def test_partial_override_deep_merges_with_defaults(
     assert console_handler.level == logging.ERROR
     assert console_handler.show_icon is True
     assert console_handler.markup is True
-    assert getattr(file_handler, "maxBytes") == int(bitmath.parse_string("5 MB").bytes)
-    assert getattr(file_handler, "backupCount") == 3
+    assert file_handler.maxBytes == int(bitmath.parse_string("5 MB").bytes)
+    assert file_handler.backupCount == 3
 
 
 def test_custom_level_conflict_by_name_raises(
@@ -276,10 +278,14 @@ def test_custom_level_conflict_by_name_raises(
         },
     )
 
-    TunnedLogger.from_yaml(config_path_one, name=logger_name, defaults_path=defaults_path, force=True)
+    TunnedLogger.from_yaml(
+        config_path_one, name=logger_name, defaults_path=defaults_path, force=True
+    )
 
     with pytest.raises(ValueError, match="different definition"):
-        TunnedLogger.from_yaml(config_path_two, name=logger_name, defaults_path=defaults_path, force=True)
+        TunnedLogger.from_yaml(
+            config_path_two, name=logger_name, defaults_path=defaults_path, force=True
+        )
 
 
 def test_custom_level_conflict_by_code_raises(
@@ -310,10 +316,14 @@ def test_custom_level_conflict_by_code_raises(
         },
     )
 
-    TunnedLogger.from_yaml(config_path_one, name=logger_name, defaults_path=defaults_path, force=True)
+    TunnedLogger.from_yaml(
+        config_path_one, name=logger_name, defaults_path=defaults_path, force=True
+    )
 
     with pytest.raises(ValueError, match="already registered"):
-        TunnedLogger.from_yaml(config_path_two, name=logger_name, defaults_path=defaults_path, force=True)
+        TunnedLogger.from_yaml(
+            config_path_two, name=logger_name, defaults_path=defaults_path, force=True
+        )
 
 
 @pytest.mark.parametrize("alias, canonical", [("WARN", "WARNING"), ("FATAL", "CRITICAL")])
@@ -337,7 +347,9 @@ def test_level_aliases_are_rejected(
     )
 
     with pytest.raises(ValueError, match=f"Use {canonical} instead of {alias}"):
-        TunnedLogger.from_yaml(config_path, name=logger_name, defaults_path=defaults_path, force=True)
+        TunnedLogger.from_yaml(
+            config_path, name=logger_name, defaults_path=defaults_path, force=True
+        )
 
 
 def test_input_level_is_rejected_in_favor_of_prompt(
@@ -358,7 +370,9 @@ def test_input_level_is_rejected_in_favor_of_prompt(
     )
 
     with pytest.raises(ValueError, match="top-level prompt"):
-        TunnedLogger.from_yaml(config_path, name=logger_name, defaults_path=defaults_path, force=True)
+        TunnedLogger.from_yaml(
+            config_path, name=logger_name, defaults_path=defaults_path, force=True
+        )
 
 
 def test_show_icon_on_non_custom_rich_handler_raises(
@@ -382,7 +396,9 @@ def test_show_icon_on_non_custom_rich_handler_raises(
     )
 
     with pytest.raises(ValueError, match="not a TunnedHandler"):
-        TunnedLogger.from_yaml(config_path, name=logger_name, defaults_path=defaults_path, force=True)
+        TunnedLogger.from_yaml(
+            config_path, name=logger_name, defaults_path=defaults_path, force=True
+        )
 
 
 def test_show_icon_must_be_boolean(
@@ -406,7 +422,9 @@ def test_show_icon_must_be_boolean(
     )
 
     with pytest.raises(ValueError, match="show_icon must be a boolean"):
-        TunnedLogger.from_yaml(config_path, name=logger_name, defaults_path=defaults_path, force=True)
+        TunnedLogger.from_yaml(
+            config_path, name=logger_name, defaults_path=defaults_path, force=True
+        )
 
 
 def test_invalid_human_readable_max_bytes_raises(
@@ -432,7 +450,9 @@ def test_invalid_human_readable_max_bytes_raises(
     )
 
     with pytest.raises(ValueError, match="Invalid maxBytes"):
-        TunnedLogger.from_yaml(config_path, name=logger_name, defaults_path=defaults_path, force=True)
+        TunnedLogger.from_yaml(
+            config_path, name=logger_name, defaults_path=defaults_path, force=True
+        )
 
 
 def test_explicit_requested_logger_config_is_supported(
@@ -457,7 +477,9 @@ def test_explicit_requested_logger_config_is_supported(
         },
     )
 
-    logger = TunnedLogger.from_yaml(config_path, name=logger_name, defaults_path=defaults_path, force=True)
+    logger = TunnedLogger.from_yaml(
+        config_path, name=logger_name, defaults_path=defaults_path, force=True
+    )
 
     assert logger.level == logging.INFO
     assert logger.propagate is False
@@ -487,7 +509,9 @@ def test_unexpected_logger_entries_raise(
     )
 
     with pytest.raises(ValueError, match="unexpected entries"):
-        TunnedLogger.from_yaml(config_path, name=logger_name, defaults_path=defaults_path, force=True)
+        TunnedLogger.from_yaml(
+            config_path, name=logger_name, defaults_path=defaults_path, force=True
+        )
 
 
 def test_config_without_root_or_requested_logger_raises(
@@ -506,7 +530,9 @@ def test_config_without_root_or_requested_logger_raises(
     )
 
     with pytest.raises(ValueError, match="either root or the requested logger"):
-        TunnedLogger.from_yaml(config_path, name=logger_name, defaults_path=defaults_path, force=True)
+        TunnedLogger.from_yaml(
+            config_path, name=logger_name, defaults_path=defaults_path, force=True
+        )
 
 
 def test_prompt_uses_symbol_when_icons_are_disabled(
@@ -528,7 +554,7 @@ def test_prompt_uses_symbol_when_icons_are_disabled(
 
     logger = TunnedLogger.from_yaml(config_path, name=logger_name, force=True)
     handler = _console_handler(logger)
-    captured: dict[str, object] = {}
+    captured: dict[str, Any] = {}
 
     def fake_input(prompt, **kwargs):
         captured["prompt"] = prompt
@@ -552,7 +578,7 @@ def test_prompt_falls_back_to_new_console_without_custom_rich_handler(
     defaults_path = tmp_path / "defaults.yml"
     config_path = tmp_path / "logger.yml"
     log_path = tmp_path / "logs" / "app.log"
-    captured: dict[str, object] = {}
+    captured: dict[str, Any] = {}
     _write_empty_defaults(defaults_path)
     _write_yaml(
         config_path,
@@ -569,7 +595,9 @@ def test_prompt_falls_back_to_new_console_without_custom_rich_handler(
         return "fallback value"
 
     monkeypatch.setattr(tunning_module.Console, "input", fake_input)
-    logger = TunnedLogger.from_yaml(config_path, name=logger_name, defaults_path=defaults_path, force=True)
+    logger = TunnedLogger.from_yaml(
+        config_path, name=logger_name, defaults_path=defaults_path, force=True
+    )
 
     value = logger.prompt("Fallback prompt")
 
@@ -612,7 +640,9 @@ def test_custom_level_with_hyphen_creates_snake_case_method_and_logs(
         },
     )
 
-    logger = TunnedLogger.from_yaml(config_path, name=logger_name, defaults_path=defaults_path, force=True)
+    logger = TunnedLogger.from_yaml(
+        config_path, name=logger_name, defaults_path=defaults_path, force=True
+    )
     log_method = getattr(logger, method_name)
 
     log_method("custom method message")

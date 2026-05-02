@@ -15,7 +15,6 @@ from rich.logging import RichHandler
 from rich.style import Style
 from rich.text import Text
 
-
 _DEFAULT_CONFIG_PATH = Path(__file__).resolve().parent / "conf.yml"
 _BUILTIN_LEVELS = {
     "NOTSET": logging.NOTSET,
@@ -29,8 +28,8 @@ _ALIASED_LEVEL_NAMES = {
     "WARN": "WARNING",
     "FATAL": "CRITICAL",
 }
-_LEVEL_SPECS_BY_NAME: dict[str, "LevelSpec"] = {}
-_LEVEL_SPECS_BY_CODE: dict[int, "LevelSpec"] = {}
+_LEVEL_SPECS_BY_NAME: dict[str, LevelSpec] = {}
+_LEVEL_SPECS_BY_CODE: dict[int, LevelSpec] = {}
 _DYNAMIC_METHODS: dict[str, int] = {}
 
 
@@ -185,7 +184,9 @@ def _register_level_spec(spec: LevelSpec) -> None:
 
     existing_by_code = _LEVEL_SPECS_BY_CODE.get(spec.code)
     if existing_by_code and existing_by_code != spec:
-        raise ValueError(f"Level code {spec.code} is already registered for {existing_by_code.name}")
+        raise ValueError(
+            f"Level code {spec.code} is already registered for {existing_by_code.name}"
+        )
 
     known_levels = logging.getLevelNamesMapping()
     if spec.name in known_levels and known_levels[spec.name] != spec.code:
@@ -194,7 +195,11 @@ def _register_level_spec(spec: LevelSpec) -> None:
         )
 
     known_name = logging.getLevelName(spec.code)
-    if isinstance(known_name, str) and not known_name.startswith("Level ") and known_name != spec.name:
+    if (
+        isinstance(known_name, str)
+        and not known_name.startswith("Level ")
+        and known_name != spec.name
+    ):
         raise ValueError(f"Level code {spec.code} is already reserved for {known_name}")
 
     if spec.name not in _BUILTIN_LEVELS:
@@ -205,7 +210,7 @@ def _register_level_spec(spec: LevelSpec) -> None:
 
 
 def _make_level_method(level_code: int, level_name: str, method_name: str):
-    def log_for_level(self: "TunnedLogger", msg: str, *args: Any, **kwargs: Any) -> None:
+    def log_for_level(self: TunnedLogger, msg: str, *args: Any, **kwargs: Any) -> None:
         if self.isEnabledFor(level_code):
             self._log(level_code, msg, args, **kwargs)
 
@@ -353,7 +358,7 @@ def _get_existing_logger(name: str) -> logging.Logger | logging.PlaceHolder | No
     return logging.getLogger().manager.loggerDict.get(name)
 
 
-def _get_or_create_tunned_logger(name: str) -> "TunnedLogger":
+def _get_or_create_tunned_logger(name: str) -> TunnedLogger:
     manager = logging.getLogger().manager
     existing = manager.loggerDict.get(name)
 
@@ -381,7 +386,7 @@ def _close_logger_handlers(logger: logging.Logger) -> None:
         handler.close()
 
 
-def _first_color_handler(logger: logging.Logger) -> "TunnedHandler | None":
+def _first_color_handler(logger: logging.Logger) -> TunnedHandler | None:
     for handler in logger.handlers:
         if isinstance(handler, TunnedHandler):
             return handler
@@ -441,7 +446,7 @@ class TunnedLogger(logging.Logger):
         name: str = "app",
         defaults_path: str | Path | None = None,
         force: bool = False,
-    ) -> "TunnedLogger":
+    ) -> TunnedLogger:
         if not isinstance(name, str) or not name.strip():
             raise ValueError("Logger name must be a non-empty string")
 

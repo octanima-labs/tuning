@@ -248,6 +248,21 @@ Run the test suite:
 ./.venv/bin/python -m pytest
 ```
 
+Run formatting, linting, and type checks:
+
+```bash
+./.venv/bin/ruff format --check .
+./.venv/bin/ruff check .
+./.venv/bin/mypy tunning tests
+```
+
+Install and run pre-commit hooks:
+
+```bash
+./.venv/bin/pre-commit install
+./.venv/bin/pre-commit run --all-files
+```
+
 Run one focused test:
 
 ```bash

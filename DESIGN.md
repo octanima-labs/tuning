@@ -42,12 +42,15 @@ Implemented:
 - human-readable `maxBytes` normalization
 - automatic parent directory creation for file handlers
 - pytest coverage in `tests/test_tunned_logger.py`
+- Ruff linting and formatting configuration
+- mypy type checking configuration
+- pre-commit hook configuration
+- GitHub Actions CI across Python 3.11 through 3.14
 - example script under `examples/`
 - user-facing config reference in `README.md`
 
 Not implemented yet:
 - CLI entrypoint
-- CI, linting, type checking, or pre-commit configuration
 - box/panel rendering mode
 - message body color customization
 
@@ -176,7 +179,18 @@ Current packaging work:
 Remaining packaging work:
 - decide whether to add documentation URLs once docs are ready
 
-### 5. Optional Future Features
+### 5. Quality Gates
+
+Status: complete for the initial setup.
+
+Current quality tooling:
+- pytest for behavioral tests
+- Ruff for linting and formatting
+- mypy for type checking
+- pre-commit hooks for local validation
+- GitHub Actions CI for Python 3.11, 3.12, 3.13, and 3.14
+
+### 6. Optional Future Features
 
 Future features should wait until the existing behavior is well covered.
 
