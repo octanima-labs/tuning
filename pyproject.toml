@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tunning"
+version = "0.1.0"
+description = "A YAML-driven Rich/stdlib logging helper for CLI applications."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "bitmath>=2.0.1",
+    "PyYAML>=6.0.3",
+    "rich>=15.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9.0.3",
+]
+cli = [
+    "typer>=0.25.1",
+]
+tui = [
+    "textual>=8.2.5",
+]
+
+[tool.setuptools]
+packages = ["tunning"]
+include-package-data = true
+
+[tool.setuptools.package-data]
+tunning = ["conf.yml"]

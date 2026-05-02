@@ -1,0 +1,9 @@
+handlers:
+  console:
+    level: DEBUG
+    show_time: true
+    show_path: true
+    show_icon: true
+
+root:
+  level: DEBUG
