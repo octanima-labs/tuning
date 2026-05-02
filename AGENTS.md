@@ -8,6 +8,14 @@
 - There is no CLI entrypoint. The real runtime entrypoint is `TunnedLogger.from_yaml(...)`.
 - Examples live in `examples/`. They are not part of the public API.
 
+## Naming conventions
+- The distribution name is `tunning`.
+- The import package is `tunning`.
+- The main runtime entrypoint is `TunnedLogger.from_yaml(...)`.
+- The implementation lives in `tunning/logger.py`.
+- Runnable examples live in `examples/`.
+- The project is MIT licensed.
+
 ## Commands
 - Use the repo-local interpreter: `./.venv/bin/python`.
 - Install deps with `./.venv/bin/pip install -r requirements.txt`.
@@ -34,12 +42,13 @@
 - If you touch logging behavior, update `./tunning/logger.py`, `./tunning/conf.yml`, and `tests/test_tunned_logger.py` together.
 - If you change public behavior or project direction, update `README.md`, `DESIGN.md`, and this file when relevant.
 - The current roadmap priority is stabilization: add tests around existing behavior before adding new features.
-- Packaging work has started, but release metadata and install behavior still need review.
+- Packaging metadata and editable install behavior have been verified; docs URLs are still pending.
 
 ## Doc Reliability
 - `README.md` is the user-facing usage guide.
-- `DESIGN.md` is the current architecture and roadmap guide.
+- `DESIGN.md` contains current architecture notes and the roadmap, but the code and YAML files are the source of truth for runtime behavior.
 - Runtime behavior is still defined by `./tunning/logger.py`, `./tunning/conf.yml`, and tests. When docs conflict with implementation, trust implementation and update the stale docs.
+- There is no CLI wrapper.
 
 ## Roadmap
 - Stabilize current behavior with more pytest coverage before adding features.

@@ -27,6 +27,7 @@ Implemented:
 - `TunnedLogger.from_yaml(...)` as the main runtime entrypoint
 - package import through `tunning`
 - package metadata in `pyproject.toml`
+- MIT license metadata
 - packaged default config in `tunning/conf.yml`
 - YAML default loading and deep-merge override loading
 - named logger configuration without configuring the process root logger
@@ -168,10 +169,12 @@ Current packaging work:
 - base runtime dependencies are limited to logging/config support
 - optional extras provide `cli` (`typer`) and `tui` (`textual`) dependencies
 - `requirements.txt` is the full developer dependency set
+- release metadata includes MIT license, author, repository URL, and issue tracker URL
+- build tooling is included in the `dev` extra
+- editable install behavior has been verified with all extras
 
 Remaining packaging work:
-- verify editable install behavior
-- decide release metadata such as license, authors, URLs, and classifiers
+- decide whether to add documentation URLs once docs are ready
 
 ### 5. Optional Future Features
 

@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=69", "wheel"]
+requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,6 +8,24 @@ version = "0.1.0"
 description = "A YAML-driven Rich/stdlib logging helper for CLI applications."
 readme = "README.md"
 requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [
+    { name = "octanima-labs", email = "octanima@tuta.io" },
+]
+keywords = ["cli", "logging", "rich", "yaml"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: System :: Logging",
+]
 dependencies = [
     "bitmath>=2.0.1",
     "PyYAML>=6.0.3",
@@ -16,7 +34,10 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+    "build>=1.3.0",
     "pytest>=9.0.3",
+    "setuptools>=77",
+    "wheel>=0.45.1",
 ]
 cli = [
     "typer>=0.25.1",
@@ -24,6 +45,10 @@ cli = [
 tui = [
     "textual>=8.2.5",
 ]
+
+[project.urls]
+Repository = "https://github.com/octanima-labs/tunning"
+Issues = "https://github.com/octanima-labs/tunning/issues"
 
 [tool.setuptools]
 packages = ["tunning"]

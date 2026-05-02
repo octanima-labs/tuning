@@ -9,15 +9,7 @@ It builds on stdlib `logging` and `rich` to give you:
 - custom levels such as `TRACE` and `SUCCESS`
 - a styled `prompt()` helper for interactive CLI input
 
-Optional extras are available for CLI and TUI integrations, but `tunning` does
-not wrap Typer or Textual.
-
-## Current shape
-- The distribution name is `tunning`.
-- The import package is `tunning`.
-- The main runtime entrypoint is `TunnedLogger.from_yaml(...)`.
-- The implementation lives in `tunning/logger.py`.
-- Runnable examples live in `examples/`.
+> Optional extras are available for CLI and TUI integrations, but `tunning` does not wrap Typer or Textual.
 
 ## Install
 Use the repo-local virtualenv:
@@ -34,6 +26,9 @@ pip install "tunning[cli]"
 pip install "tunning[tui]"
 pip install "tunning[cli,tui]"
 ```
+
+Project metadata lives in `pyproject.toml`. Build tooling is included in the
+`dev` extra and in `requirements.txt`.
 
 ## Quick start
 
@@ -258,7 +253,3 @@ Run one focused test:
 ```bash
 ./.venv/bin/python -m pytest tests/test_tunned_logger.py -k prompt
 ```
-
-## Notes
-- `DESIGN.md` contains current architecture notes and the roadmap, but the code and YAML files are the source of truth for runtime behavior.
-- There is no CLI wrapper.
