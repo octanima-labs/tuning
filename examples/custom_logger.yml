@@ -1,3 +1,10 @@
+levels:
+  MY-CUSTOM-LEVEL:
+    code: 35
+    symbol: '[?]'
+    icon: '❔'
+    style: 'bold italic underline strike #ff268f on #00faf6'
+
 handlers:
   console:
     level: DEBUG

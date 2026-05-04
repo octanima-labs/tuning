@@ -5,13 +5,13 @@
 - The distribution name is `tunning` and the import package is `tunning`.
 - Project code lives in `./tunning/logger.py`. The two public classes are `TunnedLogger` and `TunnedHandler`.
 - Packaged defaults live in `./tunning/conf.yml`. Repository config examples live in `examples/`.
-- There is no CLI entrypoint. The real runtime entrypoint is `TunnedLogger.from_yaml(...)`.
+- There is no CLI entrypoint. The preferred runtime entrypoints are `tunning.getLogger(...)`, `tunning.basicConfig(...)`, `tunning.basicConfigFromYaml(...)`, and `tunning.export(...)`.
 - Examples live in `examples/`. They are not part of the public API.
 
 ## Naming conventions
 - The distribution name is `tunning`.
 - The import package is `tunning`.
-- The main runtime entrypoint is `TunnedLogger.from_yaml(...)`.
+- The main runtime entrypoints are `tunning.getLogger(...)`, `tunning.basicConfig(...)`, `tunning.basicConfigFromYaml(...)`, and `tunning.export(...)`.
 - The implementation lives in `tunning/logger.py`.
 - Runnable examples live in `examples/`.
 - The project is MIT licensed.
@@ -20,24 +20,33 @@
 - Use the repo-local interpreter: `./.venv/bin/python`.
 - Install deps with `./.venv/bin/pip install -r requirements.txt`.
 - Cheapest import smoke test: `./.venv/bin/python -c "import tunning"`.
-- Verified config smoke test: `./.venv/bin/python -c "from tunning import TunnedLogger; TunnedLogger.from_yaml('examples/custom_logger.yml', name='smoke', force=True)"`.
+- Verified config smoke test: `./.venv/bin/python -c "import tunning; tunning.basicConfigFromYaml('examples/custom_logger.yml', force=True)"`.
 - Test suite: `./.venv/bin/python -m pytest`.
 - Focus one test: `./.venv/bin/python -m pytest tests/test_tunned_logger.py -k prompt`.
 - Format check: `./.venv/bin/ruff format --check .`.
 - Lint: `./.venv/bin/ruff check .`.
 - Type check: `./.venv/bin/mypy tunning tests`.
 - Pre-commit: `./.venv/bin/pre-commit run --all-files`.
-- Basic example: `./.venv/bin/python examples/basic_usage.py`.
+- Basic example: `./.venv/bin/python examples/usage.py`.
 
 ## Distribution
 
 - Do not rebuild distributable `egg` on every change on the code. Wait until the user requests it explicitly.
 
 ## Logging Flow
-- `TunnedLogger.from_yaml()` loads `tunning/conf.yml` as defaults and deep-merges the provided YAML override on top. `examples/custom_logger.yml` is intentionally a partial override, not a standalone full config.
+- `basicConfigFromYaml()` and `TunnedLogger.from_yaml()` load `tunning/conf.yml` as defaults and deep-merge the provided YAML override on top. `examples/custom_logger.yml` is intentionally a partial override, not a standalone full config.
+- `basicConfigFromYaml()` with no path loads the packaged `tunning/conf.yml` defaults directly.
+- `tunning.export(...)` writes the packaged `tunning/conf.yml` text as a full standalone YAML file; it does not reconstruct live runtime logger state.
 - Top-level `prompt:` is separate from `levels:`. Do not model prompt styling as a fake `INPUT` log level.
 - Built-in levels must keep stdlib codes: `DEBUG=10`, `INFO=20`, `WARNING=30`, `ERROR=40`, `CRITICAL=50`. Use `WARNING`, not `WARN`.
 - Custom levels become dynamic methods on `TunnedLogger` such as `trace()` and `success()`.
+- Level styles always apply to console level prefixes, the separator before the message, and the full message text. There is no `message_color` opt-out. Prompt styles apply to the rendered prompt prefix and question text only; the trailing input spacer, user's answer, time/path columns, and file handlers are not styled by level metadata.
+- The console level prefix column has a minimum width of 3 terminal cells; longer fallback labels expand naturally.
+- `basicConfig()` and `basicConfigFromYaml()` configure the actual process root logger and let named child loggers inherit handlers.
+- Using a `TunnedLogger` before explicit configuration lazily installs packaged level metadata and a console-only root handler at INFO level. Do not replace existing root handlers during zero config.
+- `basicConfig(filename=...)` is file-only; use `basicConfig(filename=..., console=True)` for console plus file. Console options (`show_icon`, `show_path`, `show_time`, `boxes`, `rich_tracebacks`, `markup`) do not affect file handlers.
+- `basicConfig(filename=..., max_bytes=..., backup_count=...)` uses `RotatingFileHandler`. If only one rotation option is provided, the missing value defaults to `DEFAULT_MAX_BYTES` or `DEFAULT_BACKUP_COUNT` with a warning. Rotation options are ignored when `filename` is omitted.
+- `boxes=True` renders each console log record in its own Rich panel. The panel border, title, padding, and fill use the level style; time/path columns stay outside the panel; tracebacks render inside the same panel; consecutive records are not grouped.
 - `from_yaml()` configures only the requested named logger. If the YAML only defines `root:`, that section is treated as the template for the named logger; it does not configure the actual process root logger.
 - File handler parent directories and human-readable `maxBytes` values are normalized in `tunning/logger.py`, not in the YAML itself.
 - The custom level registry is process-global. `force=True` can reconfigure handlers for the same logger, but conflicting level redefinitions should be treated as a design problem, not worked around.
@@ -45,8 +54,8 @@
 ## Coordination
 - If you touch logging behavior, update `./tunning/logger.py`, `./tunning/conf.yml`, and `tests/test_tunned_logger.py` together.
 - If you change public behavior or project direction, update `README.md`, `DESIGN.md`, and this file when relevant.
-- The current roadmap priority is stabilization: add tests around existing behavior before adding new features.
-- Packaging metadata and editable install behavior have been verified; docs URLs are still pending.
+- The current runtime roadmap is stabilized for this prototype pass. Treat grouped boxes as a follow-up feature, not current implementation scope.
+- Packaging metadata and editable install behavior have been verified; docs URLs are a packaging follow-up, not a runtime gap.
 - Quality gates use pytest, Ruff, mypy, pre-commit, and GitHub Actions across Python 3.11 through 3.14.
 
 ## Doc Reliability
@@ -56,11 +65,11 @@
 - There is no CLI wrapper.
 
 ## Roadmap
-- Stabilize current behavior with more pytest coverage before adding features.
+- Stabilization pass is complete for the current prototype; keep adding pytest coverage around behavior changes.
 - Keep linting, formatting, type checking, and tests passing before adding features.
 - Keep prompt styling separate from log levels. Do not reintroduce `levels.INPUT`.
 - Keep custom level registration strict because stdlib logging level names and codes are process-global.
 - Keep examples under `examples/`, not under the package directory.
-- Future features such as `message_color` and `boxes` belong after stabilization.
+- The remaining follow-up for boxes is optional grouping of consecutive records from the same level.
 - Do not add a `Typer` wrapper. `typer` is an optional `cli` extra; this library stays focused on logging.
 - Do not add a `Textual` abstraction. `textual` is an optional `tui` extra.

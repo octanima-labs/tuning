@@ -1,361 +1,581 @@
 from __future__ import annotations
 
-import json
 import logging
 import logging.config
-from copy import deepcopy
-from dataclasses import asdict, dataclass
+import logging.handlers
+import sys
+import warnings
+from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, overload
 
-import bitmath
-import yaml
+from rich.cells import cell_len
 from rich.console import Console
 from rich.logging import RichHandler
-from rich.style import Style
 from rich.text import Text
 
-_DEFAULT_CONFIG_PATH = Path(__file__).resolve().parent / "conf.yml"
-_BUILTIN_LEVELS = {
-    "NOTSET": logging.NOTSET,
-    "DEBUG": logging.DEBUG,
-    "INFO": logging.INFO,
-    "WARNING": logging.WARNING,
-    "ERROR": logging.ERROR,
-    "CRITICAL": logging.CRITICAL,
-}
-_ALIASED_LEVEL_NAMES = {
-    "WARN": "WARNING",
-    "FATAL": "CRITICAL",
-}
-_LEVEL_SPECS_BY_NAME: dict[str, LevelSpec] = {}
-_LEVEL_SPECS_BY_CODE: dict[int, LevelSpec] = {}
-_DYNAMIC_METHODS: dict[str, int] = {}
+from tunning._config import (
+    export_default_config,
+    load_tunning_config,
+    load_tunning_metadata,
+    load_tunning_root_config,
+    parse_size_to_bytes,
+)
+from tunning._levels import get_level_spec, install_dynamic_level_methods, register_level_specs
+from tunning._models import LevelSpec, PromptSpec
+from tunning._prompt import render_prompt_text
+
+ISO_FORMAT = "[%Y-%m-%d %H:%M:%S]"
+DEFAULT_MAX_BYTES = parse_size_to_bytes("10 MB", field_name="DEFAULT_MAX_BYTES")
+DEFAULT_BACKUP_COUNT = 3
+_DETAILED_FILE_FORMAT = "%(asctime)s [%(levelname)s] %(name)s %(funcName)s: %(message)s"
+_LEVEL_PREFIX_MIN_WIDTH = 3
+_ZERO_CONFIG_LEVEL = "INFO"
+_ROOT_PROMPT_SPEC = PromptSpec()
+_DEFAULT_METADATA_INSTALLED = False
+_ZERO_CONFIGURING = False
 
 
-@dataclass(frozen=True)
-class LevelSpec:
-    name: str
-    code: int
-    symbol: str | None = None
-    icon: str | None = None
-    style: str | None = None
+class TunnedHandler(RichHandler):
+    def __init__(
+        self,
+        *args: Any,
+        show_icon: bool = False,
+        boxes: bool = False,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(*args, **kwargs)
+        self.show_icon = show_icon
+        self.boxes = boxes
 
+    def get_level_text(self, record: logging.LogRecord) -> Text:
+        prefix = self._get_level_prefix(record)
+        rendered_prefix = _pad_level_prefix(prefix)
+        return Text.styled(rendered_prefix, _level_prefix_style(record))
 
-@dataclass(frozen=True)
-class PromptSpec:
-    symbol: str | None = None
-    icon: str | None = None
-    style: str | None = None
+    def _get_level_prefix(self, record: logging.LogRecord) -> str:
+        spec = get_level_spec(record.levelname)
+        if spec is None:
+            return f"[{record.levelname}]"
 
+        if self.show_icon and spec.icon:
+            return spec.icon
+        if spec.symbol:
+            return spec.symbol
+        return f"[{record.levelname}]"
 
-def _load_yaml(path_value: str | Path) -> dict[str, Any]:
-    path = Path(path_value)
-    with path.open("r", encoding="utf8") as file_handle:
-        data = yaml.safe_load(file_handle) or {}
+    def render_message(self, record: logging.LogRecord, message: str) -> Any:
+        message_renderable = super().render_message(record, message)
+        style = _level_style(record)
+        if style and isinstance(message_renderable, Text):
+            message_renderable.stylize(style, 0, len(message_renderable))
 
-    if not isinstance(data, dict):
-        raise ValueError(f"Expected a mapping in YAML config: {path}")
+        return message_renderable
 
-    return data
+    def render(
+        self,
+        *,
+        record: logging.LogRecord,
+        traceback: Any,
+        message_renderable: Any,
+    ) -> Any:
+        from rich.containers import Renderables
+        from rich.panel import Panel
+        from rich.table import Table
 
+        log_render = self._log_render
+        output = Table.grid(padding=(0, 0))
+        output.expand = True
+        if log_render.show_time:
+            output.add_column(style="log.time")
+        if log_render.show_level and not self.boxes:
+            output.add_column(style="log.level", width=log_render.level_width)
+        output.add_column(ratio=1, style="log.message", overflow="fold")
+        path = Path(record.pathname).name
+        if log_render.show_path and path:
+            output.add_column(style="log.path")
 
-def _deep_merge(base: Any, override: Any) -> Any:
-    if isinstance(base, dict) and isinstance(override, dict):
-        merged = deepcopy(base)
-        for key, value in override.items():
-            if key in merged:
-                merged[key] = _deep_merge(merged[key], value)
-            else:
-                merged[key] = deepcopy(value)
-        return merged
+        row: list[Any] = []
+        if log_render.show_time:
+            row.append(self._render_log_time(record))
+        if log_render.show_level and not self.boxes:
+            row.append(self._render_level_with_separator(record))
 
-    return deepcopy(override)
-
-
-def _normalize_level_name(raw_name: str) -> str:
-    return raw_name.strip().upper()
-
-
-def _normalize_method_name(level_name: str) -> str:
-    return level_name.lower().replace("-", "_")
-
-
-def _validate_symbol(symbol: str | None, *, field_name: str) -> str | None:
-    if symbol is None:
-        return None
-
-    if not isinstance(symbol, str) or not symbol:
-        raise ValueError(f"{field_name} must be a non-empty string when provided")
-
-    if len(symbol) > 3:
-        raise ValueError(f"{field_name} must be at most 3 characters")
-
-    return symbol
-
-
-def _validate_style(style: str | None, *, field_name: str) -> str | None:
-    if style is None:
-        return None
-
-    if not isinstance(style, str):
-        raise ValueError(f"{field_name} must be a string when provided")
-
-    Style.parse(style)
-    return style
-
-
-def _coerce_level_code(level_name: str, code: Any) -> int:
-    if isinstance(code, bool):
-        raise ValueError(f"Level {level_name} code must be an integer")
-
-    if isinstance(code, int):
-        return code
-
-    if isinstance(code, str) and code.strip().isdigit():
-        return int(code.strip())
-
-    raise ValueError(f"Level {level_name} code must be an integer")
-
-
-def _parse_level_specs(levels_config: dict[str, Any]) -> list[LevelSpec]:
-    if not isinstance(levels_config, dict):
-        raise ValueError("levels must be a mapping")
-
-    specs: list[LevelSpec] = []
-    seen_names: set[str] = set()
-    seen_codes: set[int] = set()
-
-    for raw_name, raw_spec in levels_config.items():
-        if not isinstance(raw_spec, dict):
-            raise ValueError(f"Level {raw_name} must be configured as a mapping")
-
-        name = _normalize_level_name(raw_name)
-        if name == "INPUT":
-            raise ValueError("Use the top-level prompt section instead of levels.INPUT")
-
-        if name in _ALIASED_LEVEL_NAMES:
-            canonical_name = _ALIASED_LEVEL_NAMES[name]
-            raise ValueError(f"Use {canonical_name} instead of {name} in levels")
-
-        code = _coerce_level_code(name, raw_spec.get("code"))
-        expected_builtin_code = _BUILTIN_LEVELS.get(name)
-        if expected_builtin_code is not None and code != expected_builtin_code:
-            raise ValueError(
-                f"Built-in level {name} must use stdlib code {expected_builtin_code}, not {code}"
-            )
-
-        if name in seen_names:
-            raise ValueError(f"Duplicate level name: {name}")
-        if code in seen_codes:
-            raise ValueError(f"Duplicate level code: {code}")
-
-        symbol = _validate_symbol(raw_spec.get("symbol"), field_name=f"levels.{raw_name}.symbol")
-        icon = raw_spec.get("icon")
-        if icon is not None and not isinstance(icon, str):
-            raise ValueError(f"levels.{raw_name}.icon must be a string when provided")
-
-        style = _validate_style(raw_spec.get("style"), field_name=f"levels.{raw_name}.style")
-
-        seen_names.add(name)
-        seen_codes.add(code)
-        specs.append(LevelSpec(name=name, code=code, symbol=symbol, icon=icon, style=style))
-
-    return specs
-
-
-def _parse_prompt_spec(prompt_config: dict[str, Any]) -> PromptSpec:
-    if not isinstance(prompt_config, dict):
-        raise ValueError("prompt must be a mapping")
-
-    symbol = _validate_symbol(prompt_config.get("symbol"), field_name="prompt.symbol")
-    icon = prompt_config.get("icon")
-    if icon is not None and not isinstance(icon, str):
-        raise ValueError("prompt.icon must be a string when provided")
-
-    style = _validate_style(prompt_config.get("style"), field_name="prompt.style")
-    return PromptSpec(symbol=symbol, icon=icon, style=style)
-
-
-def _register_level_spec(spec: LevelSpec) -> None:
-    existing_by_name = _LEVEL_SPECS_BY_NAME.get(spec.name)
-    if existing_by_name and existing_by_name != spec:
-        raise ValueError(f"Level {spec.name} is already registered with a different definition")
-
-    existing_by_code = _LEVEL_SPECS_BY_CODE.get(spec.code)
-    if existing_by_code and existing_by_code != spec:
-        raise ValueError(
-            f"Level code {spec.code} is already registered for {existing_by_code.name}"
+        body = Renderables(
+            [message_renderable] if not traceback else [message_renderable, traceback]
         )
-
-    known_levels = logging.getLevelNamesMapping()
-    if spec.name in known_levels and known_levels[spec.name] != spec.code:
-        raise ValueError(
-            f"Level {spec.name} is already registered with code {known_levels[spec.name]}"
-        )
-
-    known_name = logging.getLevelName(spec.code)
-    if (
-        isinstance(known_name, str)
-        and not known_name.startswith("Level ")
-        and known_name != spec.name
-    ):
-        raise ValueError(f"Level code {spec.code} is already reserved for {known_name}")
-
-    if spec.name not in _BUILTIN_LEVELS:
-        logging.addLevelName(spec.code, spec.name)
-
-    _LEVEL_SPECS_BY_NAME[spec.name] = spec
-    _LEVEL_SPECS_BY_CODE[spec.code] = spec
-
-
-def _make_level_method(level_code: int, level_name: str, method_name: str):
-    def log_for_level(self: TunnedLogger, msg: str, *args: Any, **kwargs: Any) -> None:
-        if self.isEnabledFor(level_code):
-            self._log(level_code, msg, args, **kwargs)
-
-    log_for_level.__name__ = method_name
-    log_for_level.__qualname__ = f"TunnedLogger.{method_name}"
-    log_for_level.__doc__ = f"Log a message with the {level_name} level."
-    return log_for_level
-
-
-def _install_dynamic_level_methods(specs: list[LevelSpec]) -> None:
-    for spec in specs:
-        if spec.name in _BUILTIN_LEVELS:
-            continue
-
-        method_name = _normalize_method_name(spec.name)
-        existing_level = _DYNAMIC_METHODS.get(method_name)
-        if existing_level is not None:
-            if existing_level != spec.code:
-                raise ValueError(
-                    f"Method {method_name} is already bound to level {existing_level}, not {spec.code}"
+        if self.boxes:
+            row.append(
+                Panel(
+                    body,
+                    title=self._render_box_title(record) if log_render.show_level else None,
+                    title_align="left",
+                    border_style=_level_prefix_style(record),
+                    style=_level_prefix_style(record),
+                    expand=True,
                 )
-            continue
+            )
+        else:
+            row.append(body)
 
-        if hasattr(TunnedLogger, method_name):
-            raise ValueError(f"Cannot create dynamic method {method_name}: name already exists")
+        if log_render.show_path and path:
+            row.append(self._render_log_path(record, path))
 
-        setattr(TunnedLogger, method_name, _make_level_method(spec.code, spec.name, method_name))
-        _DYNAMIC_METHODS[method_name] = spec.code
+        output.add_row(*row)
+        return output
+
+    def _render_box_title(self, record: logging.LogRecord) -> Text:
+        title = Text(f"{self._get_level_prefix(record)} {record.levelname}")
+        title.stylize(_level_prefix_style(record), 0, len(title))
+        return title
+
+    def _render_level_with_separator(self, record: logging.LogRecord) -> Text:
+        level_text = self.get_level_text(record).copy()
+        level_text.append(" ")
+        level_text.stylize(_level_prefix_style(record), 0, len(level_text))
+        return level_text
+
+    def _render_log_time(self, record: logging.LogRecord) -> Text:
+        log_render = self._log_render
+        log_time = datetime.fromtimestamp(record.created)
+        time_format: Any = self.formatter.datefmt if self.formatter is not None else None
+        time_format = time_format or log_render.time_format
+
+        if callable(time_format):
+            log_time_display = time_format(log_time)
+        else:
+            log_time_display = Text(log_time.strftime(time_format))
+
+        if log_time_display == log_render._last_time and log_render.omit_repeated_times:
+            rendered_time = Text(" " * len(log_time_display))
+        else:
+            log_render._last_time = log_time_display
+            rendered_time = log_time_display.copy()
+
+        rendered_time.append(" ")
+        return rendered_time
+
+    def _render_log_path(self, record: logging.LogRecord, path: str) -> Text:
+        link_path = record.pathname if self.enable_link_path else None
+        path_text = Text(" ")
+        path_text.append(path, style=f"link file://{link_path}" if link_path else "")
+        if record.lineno:
+            path_text.append(":")
+            path_text.append(
+                f"{record.lineno}",
+                style=f"link file://{link_path}#{record.lineno}" if link_path else "",
+            )
+        return path_text
 
 
-def _resolve_handler_factory(handler_config: dict[str, Any]) -> Any:
-    return handler_config.get("()") or handler_config.get("class")
+class TunnedLogger(logging.Logger):
+    def __init__(self, name: str, level: int = logging.NOTSET) -> None:
+        super().__init__(name, level)
+        self._tunning_signature: str | None = None
+        self._prompt_spec: PromptSpec | None = None
 
+    def isEnabledFor(self, level: int) -> bool:
+        _ensure_zero_configured()
+        return super().isEnabledFor(level)
 
-def _is_custom_rich_handler(handler_config: dict[str, Any]) -> bool:
-    factory = _resolve_handler_factory(handler_config)
-    if factory is TunnedHandler:
-        return True
+    @classmethod
+    def from_yaml(
+        cls,
+        config_path: str | Path,
+        *,
+        name: str = "app",
+        defaults_path: str | Path | None = None,
+        force: bool = False,
+    ) -> TunnedLogger:
+        if not isinstance(name, str) or not name.strip():
+            raise ValueError("Logger name must be a non-empty string")
 
-    if isinstance(factory, str):
-        return factory in {
-            f"{TunnedHandler.__module__}.{TunnedHandler.__qualname__}",
-            "tunning.TunnedHandler",
-        }
+        resolved_config = load_tunning_config(
+            config_path,
+            logger_name=name,
+            defaults_path=defaults_path,
+        )
+        logger = _get_or_create_tunned_logger(name)
 
-    return False
+        existing_signature = logger._tunning_signature
+        if existing_signature == resolved_config.signature and not force:
+            return logger
 
-
-def _parse_size_to_bytes(raw_value: str) -> int:
-    try:
-        size = bitmath.parse_string(raw_value)
-    except ValueError as error:
-        raise ValueError(f"Invalid maxBytes value: {raw_value}") from error
-
-    return int(size.bytes)
-
-
-def _normalize_handler_config(handler_name: str, handler_config: dict[str, Any]) -> None:
-    if "show_icon" in handler_config:
-        if not _is_custom_rich_handler(handler_config):
-            raise ValueError(f"Handler {handler_name} uses show_icon but is not a TunnedHandler")
-
-        if not isinstance(handler_config["show_icon"], bool):
-            raise ValueError(f"handlers.{handler_name}.show_icon must be a boolean")
-
-    if "maxBytes" in handler_config and isinstance(handler_config["maxBytes"], str):
-        handler_config["maxBytes"] = _parse_size_to_bytes(handler_config["maxBytes"])
-
-    filename = handler_config.get("filename")
-    if filename is not None:
-        Path(filename).expanduser().parent.mkdir(parents=True, exist_ok=True)
-
-
-def _select_logger_config(config: dict[str, Any], logger_name: str) -> dict[str, Any]:
-    loggers = config.get("loggers")
-    root_config = config.get("root")
-
-    if loggers is not None and not isinstance(loggers, dict):
-        raise ValueError("loggers must be a mapping when provided")
-
-    if loggers:
-        extra_loggers = [name for name in loggers if name != logger_name]
-        if extra_loggers:
+        if existing_signature and existing_signature != resolved_config.signature and not force:
             raise ValueError(
-                "v1 only supports configuring the requested logger name; "
-                f"unexpected entries: {', '.join(extra_loggers)}"
+                f"TunnedLogger {name!r} is already configured with a different config; use force=True"
             )
 
-    if loggers and logger_name in loggers:
-        logger_config = deepcopy(loggers[logger_name])
-    elif root_config is not None:
-        logger_config = deepcopy(root_config)
-    else:
-        raise ValueError("Config must define either root or the requested logger entry")
+        if existing_signature is None and logger.handlers and not force:
+            raise ValueError(
+                f"TunnedLogger {name!r} already has handlers but is not managed by from_yaml; use force=True"
+            )
 
-    if not isinstance(logger_config, dict):
-        raise ValueError("Logger configuration must be a mapping")
+        register_level_specs(resolved_config.level_specs)
+        install_dynamic_level_methods(cls, resolved_config.level_specs)
 
-    logger_config.setdefault("propagate", False)
-    return logger_config
+        if force:
+            _close_logger_handlers(logger)
+
+        logging.config.dictConfig(resolved_config.logging_config)
+        configured_logger = logging.getLogger(name)
+        if not isinstance(configured_logger, TunnedLogger):
+            raise ValueError(f"Configured logger {name!r} is not a TunnedLogger")
+
+        configured_logger._tunning_signature = resolved_config.signature
+        configured_logger._prompt_spec = resolved_config.prompt_spec
+        return configured_logger
+
+    def prompt(
+        self,
+        message: str,
+        *,
+        password: bool = False,
+        markup: bool | None = None,
+    ) -> str:
+        if not isinstance(message, str):
+            raise ValueError("Prompt message must be a string")
+
+        _ensure_zero_configured()
+
+        handler = _first_color_handler(self)
+        console = handler.console if handler else Console()
+        show_icon = handler.show_icon if handler else False
+        use_markup = handler.markup if handler and markup is None else bool(markup)
+
+        prompt_text = render_prompt_text(
+            self._prompt_spec or _ROOT_PROMPT_SPEC,
+            message,
+            show_icon=show_icon,
+            markup=use_markup,
+        )
+        return console.input(prompt_text, markup=False, password=password)
 
 
-def _normalize_logging_config(config: dict[str, Any], logger_name: str) -> dict[str, Any]:
-    normalized = deepcopy(config)
-    normalized.pop("levels", None)
-    normalized.pop("prompt", None)
-
-    version = normalized.get("version", 1)
-    if version != 1:
-        raise ValueError(f"Unsupported logging config version: {version}")
-
-    normalized["version"] = 1
-    normalized["disable_existing_loggers"] = False
-
-    handlers = normalized.get("handlers", {})
-    if not isinstance(handlers, dict) or not handlers:
-        raise ValueError("Config must define at least one handler")
-
-    for handler_name, handler_config in handlers.items():
-        if not isinstance(handler_config, dict):
-            raise ValueError(f"Handler {handler_name} must be configured as a mapping")
-        _normalize_handler_config(handler_name, handler_config)
-
-    logger_config = _select_logger_config(normalized, logger_name)
-    normalized.pop("root", None)
-    normalized["loggers"] = {logger_name: logger_config}
-
-    return normalized
+@overload
+def getLogger(name: str) -> TunnedLogger: ...
 
 
-def _build_signature(
-    normalized_config: dict[str, Any],
-    level_specs: list[LevelSpec],
-    prompt_spec: PromptSpec,
-) -> str:
-    payload = {
-        "config": normalized_config,
-        "levels": [asdict(spec) for spec in level_specs],
-        "prompt": asdict(prompt_spec),
+@overload
+def getLogger(name: None = None) -> logging.Logger: ...
+
+
+def getLogger(name: str | None = None) -> logging.Logger:
+    _install_default_metadata()
+
+    if name is None:
+        return logging.getLogger()
+
+    if not isinstance(name, str) or not name.strip():
+        raise ValueError("Logger name must be a non-empty string")
+
+    return _get_or_create_tunned_logger(name)
+
+
+def export(path: str | Path | None = None, *, force: bool = False) -> Path:
+    _validate_bool("force", force)
+    return export_default_config(_resolve_export_path(path), force=force)
+
+
+def _resolve_export_path(path: str | Path | None) -> Path:
+    if path is None:
+        return _caller_directory() / "tunning.yml"
+
+    target_path = Path(path).expanduser()
+    if target_path.is_dir():
+        return target_path / "tunning.yml"
+
+    return target_path
+
+
+def _caller_directory() -> Path:
+    try:
+        caller_frame = sys._getframe(3)
+    except ValueError:
+        return Path.cwd()
+
+    caller_file = caller_frame.f_globals.get("__file__")
+    if not isinstance(caller_file, str):
+        return Path.cwd()
+
+    return Path(caller_file).resolve().parent
+
+
+def basicConfig(
+    *,
+    filename: str | Path | None = None,
+    filemode: str = "a",
+    max_bytes: int | str | None = None,
+    backup_count: int | None = None,
+    format: str | None = None,
+    datefmt: str | None = None,
+    style: str = "%",
+    level: int | str | None = logging.WARNING,
+    stream: Any | None = None,
+    handlers: list[logging.Handler] | None = None,
+    force: bool = False,
+    encoding: str | None = None,
+    errors: str | None = None,
+    console: bool = False,
+    show_icon: bool = False,
+    show_path: bool = False,
+    show_time: bool = False,
+    boxes: bool = False,
+    rich_tracebacks: bool = True,
+    markup: bool = True,
+    defaults_path: str | Path | None = None,
+) -> None:
+    root_logger = logging.getLogger()
+    if root_logger.handlers and not force:
+        return
+
+    _validate_bool("console", console)
+    _validate_bool("show_icon", show_icon)
+    _validate_bool("show_path", show_path)
+    _validate_bool("show_time", show_time)
+    _validate_bool("boxes", boxes)
+    _validate_bool("rich_tracebacks", rich_tracebacks)
+    _validate_bool("markup", markup)
+
+    if handlers is not None and (filename is not None or stream is not None or console):
+        raise ValueError(
+            "'stream', 'filename', or 'console' should not be specified together with 'handlers'"
+        )
+    if filename is not None and stream is not None and not console:
+        raise ValueError("'stream' and 'filename' should not be specified together")
+
+    metadata = load_tunning_metadata(defaults_path=defaults_path)
+    _install_tunning_metadata(metadata.level_specs, metadata.prompt_spec)
+
+    logging_handlers = handlers
+    if logging_handlers is None:
+        logging_handlers = []
+        if filename is not None:
+            logging_handlers.append(
+                _make_file_handler(
+                    filename,
+                    filemode=filemode,
+                    max_bytes=max_bytes,
+                    backup_count=backup_count,
+                    encoding=encoding,
+                    errors=errors,
+                )
+            )
+
+        if filename is None or console:
+            logging_handlers.append(
+                _make_console_handler(
+                    stream=stream,
+                    show_icon=show_icon,
+                    show_path=show_path,
+                    show_time=show_time,
+                    boxes=boxes,
+                    rich_tracebacks=rich_tracebacks,
+                    markup=markup,
+                )
+            )
+
+    basic_config_kwargs: dict[str, Any] = {
+        "format": format,
+        "datefmt": datefmt,
+        "style": style,
+        "level": level,
+        "handlers": logging_handlers,
+        "force": force,
     }
-    return json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+    logging.basicConfig(**basic_config_kwargs)
 
 
-def _get_existing_logger(name: str) -> logging.Logger | logging.PlaceHolder | None:
-    return logging.getLogger().manager.loggerDict.get(name)
+def _make_console_handler(
+    *,
+    stream: Any | None,
+    show_icon: bool,
+    show_path: bool,
+    show_time: bool,
+    boxes: bool,
+    rich_tracebacks: bool,
+    markup: bool,
+) -> TunnedHandler:
+    handler_kwargs: dict[str, Any] = {
+        "show_icon": show_icon,
+        "show_path": show_path,
+        "show_time": show_time,
+        "boxes": boxes,
+        "rich_tracebacks": rich_tracebacks,
+        "markup": markup,
+    }
+    if stream is not None:
+        handler_kwargs["console"] = Console(file=stream)
+
+    return TunnedHandler(**handler_kwargs)
+
+
+def _make_file_handler(
+    filename: str | Path,
+    *,
+    filemode: str,
+    max_bytes: int | str | None,
+    backup_count: int | None,
+    encoding: str | None,
+    errors: str | None,
+) -> logging.FileHandler | logging.handlers.RotatingFileHandler:
+    log_path = Path(filename).expanduser()
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    if max_bytes is None and backup_count is None:
+        handler: logging.FileHandler | logging.handlers.RotatingFileHandler = logging.FileHandler(
+            log_path,
+            mode=filemode,
+            encoding=encoding,
+            errors=errors,
+        )
+    else:
+        resolved_max_bytes = _resolve_max_bytes(max_bytes)
+        resolved_backup_count = _resolve_backup_count(backup_count)
+        handler = logging.handlers.RotatingFileHandler(
+            log_path,
+            mode=filemode,
+            maxBytes=resolved_max_bytes,
+            backupCount=resolved_backup_count,
+            encoding=encoding,
+            errors=errors,
+        )
+    handler.setFormatter(logging.Formatter(_DETAILED_FILE_FORMAT))
+    return handler
+
+
+def _resolve_max_bytes(max_bytes: int | str | None) -> int:
+    if max_bytes is None:
+        warnings.warn(
+            "Rotation enabled, but no max_bytes specified. Using tunning.DEFAULT_MAX_BYTES.",
+            stacklevel=4,
+        )
+        return DEFAULT_MAX_BYTES
+
+    if isinstance(max_bytes, bool):
+        raise ValueError("max_bytes must be a positive integer or size string")
+    if isinstance(max_bytes, int):
+        resolved_max_bytes = max_bytes
+    elif isinstance(max_bytes, str):
+        resolved_max_bytes = parse_size_to_bytes(max_bytes, field_name="max_bytes")
+    else:
+        raise ValueError("max_bytes must be a positive integer or size string")
+
+    if resolved_max_bytes <= 0:
+        raise ValueError("max_bytes must be greater than 0")
+
+    return resolved_max_bytes
+
+
+def _resolve_backup_count(backup_count: int | None) -> int:
+    if backup_count is None:
+        warnings.warn(
+            "Rotation enabled, but no backup_count specified. Using tunning.DEFAULT_BACKUP_COUNT.",
+            stacklevel=4,
+        )
+        return DEFAULT_BACKUP_COUNT
+
+    if isinstance(backup_count, bool) or not isinstance(backup_count, int):
+        raise ValueError("backup_count must be a non-negative integer")
+    if backup_count < 0:
+        raise ValueError("backup_count must be greater than or equal to 0")
+
+    return backup_count
+
+
+def _validate_bool(field_name: str, value: bool) -> None:
+    if not isinstance(value, bool):
+        raise ValueError(f"{field_name} must be a boolean")
+
+
+def _level_style(record: logging.LogRecord) -> str | None:
+    spec = get_level_spec(record.levelname)
+    if spec is None:
+        return None
+
+    return spec.style
+
+
+def _level_prefix_style(record: logging.LogRecord) -> str:
+    spec = get_level_spec(record.levelname)
+    if spec is not None and spec.style:
+        return spec.style
+
+    return f"logging.level.{record.levelname.lower()}"
+
+
+def _pad_level_prefix(prefix: str) -> str:
+    prefix_width = cell_len(prefix)
+    if prefix_width >= _LEVEL_PREFIX_MIN_WIDTH:
+        return prefix
+
+    return prefix + " " * (_LEVEL_PREFIX_MIN_WIDTH - prefix_width)
+
+
+def basicConfigFromYaml(
+    config_path: str | Path | None = None,
+    *,
+    defaults_path: str | Path | None = None,
+    force: bool = False,
+) -> None:
+    root_logger = logging.getLogger()
+    if root_logger.handlers and not force:
+        return
+
+    resolved_config = load_tunning_root_config(
+        config_path,
+        defaults_path=defaults_path,
+    )
+    _install_tunning_metadata(resolved_config.level_specs, resolved_config.prompt_spec)
+    _prepare_configured_tunned_loggers(resolved_config.logging_config)
+
+    if force:
+        _close_logger_handlers(root_logger)
+
+    logging.config.dictConfig(resolved_config.logging_config)
+
+
+def _install_default_metadata() -> None:
+    global _DEFAULT_METADATA_INSTALLED
+
+    if _DEFAULT_METADATA_INSTALLED:
+        return
+
+    metadata = load_tunning_metadata()
+    _install_tunning_metadata(metadata.level_specs, metadata.prompt_spec)
+    _DEFAULT_METADATA_INSTALLED = True
+
+
+def _ensure_zero_configured() -> None:
+    global _ZERO_CONFIGURING
+
+    if _ZERO_CONFIGURING:
+        return
+
+    _ZERO_CONFIGURING = True
+    try:
+        _install_default_metadata()
+        root_logger = logging.getLogger()
+        if root_logger.handlers:
+            return
+
+        zero_config_kwargs: dict[str, Any] = {
+            "format": None,
+            "level": _ZERO_CONFIG_LEVEL,
+            "handlers": [
+                _make_console_handler(
+                    stream=None,
+                    show_icon=False,
+                    show_path=False,
+                    show_time=False,
+                    boxes=False,
+                    rich_tracebacks=True,
+                    markup=True,
+                )
+            ],
+        }
+        logging.basicConfig(**zero_config_kwargs)
+    finally:
+        _ZERO_CONFIGURING = False
 
 
 def _get_or_create_tunned_logger(name: str) -> TunnedLogger:
@@ -380,6 +600,26 @@ def _get_or_create_tunned_logger(name: str) -> TunnedLogger:
     return logger
 
 
+def _install_tunning_metadata(level_specs: list[LevelSpec], prompt_spec: PromptSpec) -> None:
+    global _ROOT_PROMPT_SPEC
+
+    register_level_specs(level_specs)
+    install_dynamic_level_methods(TunnedLogger, level_specs)
+    _ROOT_PROMPT_SPEC = prompt_spec
+
+
+def _prepare_configured_tunned_loggers(logging_config: dict[str, Any]) -> None:
+    loggers = logging_config.get("loggers")
+    if not isinstance(loggers, dict):
+        return
+
+    manager = logging.getLogger().manager
+    for name in loggers:
+        existing = manager.loggerDict.get(name)
+        if existing is None or not isinstance(existing, logging.Logger):
+            _get_or_create_tunned_logger(name)
+
+
 def _close_logger_handlers(logger: logging.Logger) -> None:
     for handler in logger.handlers[:]:
         logger.removeHandler(handler)
@@ -387,128 +627,29 @@ def _close_logger_handlers(logger: logging.Logger) -> None:
 
 
 def _first_color_handler(logger: logging.Logger) -> TunnedHandler | None:
-    for handler in logger.handlers:
-        if isinstance(handler, TunnedHandler):
-            return handler
+    current: logging.Logger | None = logger
+    while current is not None:
+        for handler in current.handlers:
+            if isinstance(handler, TunnedHandler):
+                return handler
+
+        if not current.propagate:
+            break
+        current = current.parent
+
     return None
 
 
-def _render_prompt_prefix(prompt_spec: PromptSpec, *, show_icon: bool) -> Text:
-    if show_icon and prompt_spec.icon:
-        prefix = prompt_spec.icon
-    elif prompt_spec.symbol:
-        prefix = prompt_spec.symbol
-    else:
-        prefix = ">"
-
-    style = prompt_spec.style or ""
-    if style:
-        return Text.styled(prefix, style)
-
-    return Text(prefix)
-
-
-class TunnedHandler(RichHandler):
-    def __init__(self, *args: Any, show_icon: bool = False, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
-        self.show_icon = show_icon
-
-    def get_level_text(self, record: logging.LogRecord) -> Text:
-        spec = _LEVEL_SPECS_BY_NAME.get(record.levelname)
-        if spec is None:
-            prefix = f"[{record.levelname}]"
-            style = f"logging.level.{record.levelname.lower()}"
-        else:
-            if self.show_icon and spec.icon:
-                prefix = spec.icon
-            elif spec.symbol:
-                prefix = spec.symbol
-            else:
-                prefix = f"[{record.levelname}]"
-
-            style = spec.style or f"logging.level.{record.levelname.lower()}"
-
-        rendered_prefix = prefix if len(prefix) >= 8 else prefix.ljust(8)
-        return Text.styled(rendered_prefix, style)
-
-
-class TunnedLogger(logging.Logger):
-    def __init__(self, name: str, level: int = logging.NOTSET) -> None:
-        super().__init__(name, level)
-        self._tunning_signature: str | None = None
-        self._prompt_spec = PromptSpec()
-
-    @classmethod
-    def from_yaml(
-        cls,
-        config_path: str | Path,
-        *,
-        name: str = "app",
-        defaults_path: str | Path | None = None,
-        force: bool = False,
-    ) -> TunnedLogger:
-        if not isinstance(name, str) or not name.strip():
-            raise ValueError("Logger name must be a non-empty string")
-
-        base_config = _load_yaml(defaults_path or _DEFAULT_CONFIG_PATH)
-        override_config = _load_yaml(config_path)
-        merged_config = _deep_merge(base_config, override_config)
-
-        level_specs = _parse_level_specs(merged_config.get("levels", {}))
-        prompt_spec = _parse_prompt_spec(merged_config.get("prompt", {}))
-        normalized_config = _normalize_logging_config(merged_config, name)
-        signature = _build_signature(normalized_config, level_specs, prompt_spec)
-
-        logger = _get_or_create_tunned_logger(name)
-        existing_signature = logger._tunning_signature
-        if existing_signature == signature and not force:
-            return logger
-
-        if existing_signature and existing_signature != signature and not force:
-            raise ValueError(
-                f"TunnedLogger {name!r} is already configured with a different config; use force=True"
-            )
-
-        if existing_signature is None and logger.handlers and not force:
-            raise ValueError(
-                f"TunnedLogger {name!r} already has handlers but is not managed by from_yaml; use force=True"
-            )
-
-        for spec in level_specs:
-            _register_level_spec(spec)
-        _install_dynamic_level_methods(level_specs)
-
-        if force:
-            _close_logger_handlers(logger)
-
-        logging.config.dictConfig(normalized_config)
-        configured_logger = logging.getLogger(name)
-        if not isinstance(configured_logger, TunnedLogger):
-            raise ValueError(f"Configured logger {name!r} is not a TunnedLogger")
-
-        configured_logger._tunning_signature = signature
-        configured_logger._prompt_spec = prompt_spec
-        return configured_logger
-
-    def prompt(
-        self,
-        message: str,
-        *,
-        password: bool = False,
-        markup: bool | None = None,
-    ) -> str:
-        if not isinstance(message, str):
-            raise ValueError("Prompt message must be a string")
-
-        handler = _first_color_handler(self)
-        console = handler.console if handler else Console()
-        show_icon = handler.show_icon if handler else False
-        use_markup = handler.markup if handler and markup is None else bool(markup)
-
-        prefix = _render_prompt_prefix(self._prompt_spec, show_icon=show_icon)
-        message_text = Text.from_markup(message) if use_markup else Text(message)
-        prompt_text = Text.assemble(prefix, " ", message_text, " ")
-        return console.input(prompt_text, markup=False, password=password)
-
-
-__all__ = ["TunnedLogger", "TunnedHandler", "LevelSpec", "PromptSpec"]
+__all__ = [
+    "TunnedLogger",
+    "TunnedHandler",
+    "LevelSpec",
+    "PromptSpec",
+    "ISO_FORMAT",
+    "DEFAULT_MAX_BYTES",
+    "DEFAULT_BACKUP_COUNT",
+    "getLogger",
+    "export",
+    "basicConfig",
+    "basicConfigFromYaml",
+]

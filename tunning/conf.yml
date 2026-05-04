@@ -12,7 +12,7 @@ levels:
   INFO:
     code: 20
     symbol: '[*]'
-    icon: '✉️'
+    icon: '🔵'
     style: 'cyan'
   SUCCESS:
     code: 25
@@ -22,27 +22,22 @@ levels:
   WARNING:
     code: 30
     symbol: '[-]'
-    icon: '⚠️'
+    icon: '🔶'
     style: 'yellow'
   ERROR:
     code: 40
     symbol: '[!]'
-    icon: '🔥'
+    icon: '🔥'  # 💥
     style: 'bold red'
   CRITICAL:
     code: 50
     symbol: '!!!'
-    icon: '💥'
+    icon: '💀'
     style: 'bold white on red'
-  MY-CUSTOM-LEVEL:
-    code: 35
-    symbol: '[?]'
-    icon: '❔'
-    style: 'bold italic underline strike #ff268f on #00faf6'
 
 prompt:
-  symbol: '<<<'
-  icon: '✏️'
+  symbol: '<<<' # [?] maybe is clearer
+  icon: '📝'
   style: 'italic bold black on magenta'
 
 version: 1
@@ -56,9 +51,11 @@ handlers:
   console:
     '()': 'tunning.TunnedHandler'
     level: TRACE
+    log_time_format: "[%Y-%m-%d %H:%M:%S]"
     show_time: false
     show_level: true
     show_path: false
+    boxes: false
     rich_tracebacks: true
     markup: true
     show_icon: false
@@ -73,5 +70,5 @@ handlers:
     encoding: utf8
 
 root:
-  level: TRACE
+  level: INFO
   handlers: [console, file]

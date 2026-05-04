@@ -30,6 +30,7 @@ ruff==0.15.12
 setuptools==80.9.0
 shellingham==1.5.4
 textual==8.2.5
+twine==6.1.0
 typer==0.25.1
 types-PyYAML==6.0.12.20260408
 typing_extensions==4.15.0
