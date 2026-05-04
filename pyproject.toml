@@ -44,6 +44,11 @@ dev = [
     "types-PyYAML>=6.0.12.20250915",
     "wheel>=0.45.1",
 ]
+docs = [
+    "mkdocs>=1.6",
+    "mkdocs-material>=9.5",
+    "mkdocstrings[python]>=0.27",
+]
 cli = [
     "typer>=0.25.1",
 ]
@@ -52,6 +57,7 @@ tui = [
 ]
 
 [project.urls]
+Documentation = "https://octanima-labs.github.io/tunning/"
 Repository = "https://github.com/octanima-labs/tunning"
 Issues = "https://github.com/octanima-labs/tunning/issues"
 

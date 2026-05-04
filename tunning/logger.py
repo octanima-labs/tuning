@@ -1,3 +1,5 @@
+"""Public logging APIs for tunning."""
+
 from __future__ import annotations
 
 import logging
@@ -26,8 +28,13 @@ from tunning._models import LevelSpec, PromptSpec
 from tunning._prompt import render_prompt_text
 
 ISO_FORMAT = "[%Y-%m-%d %H:%M:%S]"
+"""ISO-like console timestamp format for `basicConfig(datefmt=...)`."""
+
 DEFAULT_MAX_BYTES = parse_size_to_bytes("10 MB", field_name="DEFAULT_MAX_BYTES")
+"""Default rotating file size used when only `backup_count` is provided."""
+
 DEFAULT_BACKUP_COUNT = 3
+"""Default number of rotated log files kept when only `max_bytes` is provided."""
 _DETAILED_FILE_FORMAT = "%(asctime)s [%(levelname)s] %(name)s %(funcName)s: %(message)s"
 _LEVEL_PREFIX_MIN_WIDTH = 3
 _ZERO_CONFIG_LEVEL = "INFO"
@@ -37,6 +44,14 @@ _ZERO_CONFIGURING = False
 
 
 class TunnedHandler(RichHandler):
+    """Rich console handler that renders tunning level metadata.
+
+    `TunnedHandler` extends Rich's `RichHandler` with symbol/icon level
+    prefixes, full-message level styling, and optional per-record boxes.
+    It is normally created through `basicConfig()` or YAML configuration rather
+    than instantiated directly.
+    """
+
     def __init__(
         self,
         *args: Any,
@@ -44,6 +59,15 @@ class TunnedHandler(RichHandler):
         boxes: bool = False,
         **kwargs: Any,
     ) -> None:
+        """Create a console handler.
+
+        Args:
+            *args: Positional arguments passed to `rich.logging.RichHandler`.
+            show_icon: Use configured level icons instead of symbols when an
+                icon is available.
+            boxes: Render each console log record inside a Rich panel.
+            **kwargs: Keyword arguments passed to `rich.logging.RichHandler`.
+        """
         super().__init__(*args, **kwargs)
         self.show_icon = show_icon
         self.boxes = boxes
@@ -169,6 +193,13 @@ class TunnedHandler(RichHandler):
 
 
 class TunnedLogger(logging.Logger):
+    """Logger subclass with YAML configuration and styled prompts.
+
+    `TunnedLogger` behaves like a normal stdlib logger while adding
+    `from_yaml()` for named logger configuration and `prompt()` for styled
+    interactive input.
+    """
+
     def __init__(self, name: str, level: int = logging.NOTSET) -> None:
         super().__init__(name, level)
         self._tunning_signature: str | None = None
@@ -187,6 +218,29 @@ class TunnedLogger(logging.Logger):
         defaults_path: str | Path | None = None,
         force: bool = False,
     ) -> TunnedLogger:
+        """Configure and return one named `TunnedLogger` from YAML.
+
+        The packaged `tunning/conf.yml` defaults are loaded first, then
+        `config_path` is deep-merged on top. This method configures only the
+        requested named logger. If the YAML defines only `root`, that section is
+        used as the template for the named logger and does not configure the
+        process root logger.
+
+        Args:
+            config_path: YAML override path.
+            name: Logger name to configure.
+            defaults_path: Optional defaults file used instead of the packaged
+                config. Intended for tests and advanced integrations.
+            force: Replace existing managed handlers for the same logger.
+
+        Returns:
+            The configured `TunnedLogger`.
+
+        Raises:
+            ValueError: If the logger name is invalid, the logger already exists
+                as a non-`TunnedLogger`, or an existing configuration would be
+                replaced without `force=True`.
+        """
         if not isinstance(name, str) or not name.strip():
             raise ValueError("Logger name must be a non-empty string")
 
@@ -233,6 +287,21 @@ class TunnedLogger(logging.Logger):
         password: bool = False,
         markup: bool | None = None,
     ) -> str:
+        """Prompt for interactive input using configured prompt styling.
+
+        Args:
+            message: Prompt question to display.
+            password: Hide input while typing.
+            markup: Whether Rich markup in the prompt message is enabled. If
+                omitted, the first inherited `TunnedHandler` setting is used.
+
+        Returns:
+            The user's typed input.
+
+        Raises:
+            ValueError: If `message` is not a string.
+            EOFError: If input cannot be read from the console.
+        """
         if not isinstance(message, str):
             raise ValueError("Prompt message must be a string")
 
@@ -261,6 +330,19 @@ def getLogger(name: None = None) -> logging.Logger: ...
 
 
 def getLogger(name: str | None = None) -> logging.Logger:
+    """Return a logger using tunning's logger class for named loggers.
+
+    Args:
+        name: Logger name. If omitted, returns the process root logger.
+
+    Returns:
+        A `TunnedLogger` for named loggers, or the stdlib root logger when
+        `name` is omitted.
+
+    Raises:
+        ValueError: If `name` is empty or an existing logger with that name is
+            not a `TunnedLogger`.
+    """
     _install_default_metadata()
 
     if name is None:
@@ -273,6 +355,23 @@ def getLogger(name: str | None = None) -> logging.Logger:
 
 
 def export(path: str | Path | None = None, *, force: bool = False) -> Path:
+    """Export the packaged default configuration to a YAML file.
+
+    The exported file is copied from packaged `tunning/conf.yml`; it does not
+    reconstruct the current runtime logging state.
+
+    Args:
+        path: Destination file path or existing directory. If omitted, writes
+            `tunning.yml` next to the calling Python file.
+        force: Overwrite an existing target file.
+
+    Returns:
+        The resolved path that was written.
+
+    Raises:
+        FileExistsError: If the target file exists and `force` is false.
+        ValueError: If `force` is not a boolean.
+    """
     _validate_bool("force", force)
     return export_default_config(_resolve_export_path(path), force=force)
 
@@ -325,6 +424,46 @@ def basicConfig(
     markup: bool = True,
     defaults_path: str | Path | None = None,
 ) -> None:
+    """Configure the process root logger with tunning defaults.
+
+    This follows stdlib `logging.basicConfig()` semantics: if the root logger
+    already has handlers, the call is ignored unless `force=True` is passed.
+    Without `filename`, a console `TunnedHandler` is installed. With `filename`,
+    a detailed file handler is installed; pass `console=True` to install both.
+
+    Args:
+        filename: File path for file logging. If omitted, console logging is
+            configured instead.
+        filemode: File open mode for file handlers.
+        max_bytes: Rotation threshold in bytes or as a human-readable size
+            string such as `"10 MB"`. Ignored when `filename` is omitted.
+        backup_count: Number of rotated log files to keep. Ignored when
+            `filename` is omitted.
+        format: Formatter format string passed to `logging.basicConfig()`.
+        datefmt: Formatter date format. For console timestamps, use this with
+            `show_time=True`; `ISO_FORMAT` is provided as a convenience.
+        style: Formatter style passed to `logging.basicConfig()`.
+        level: Root logger level.
+        stream: Console stream target.
+        handlers: Explicit handlers. Cannot be combined with `stream`,
+            `filename`, or `console`.
+        force: Replace existing root handlers.
+        encoding: File encoding for file handlers.
+        errors: File encoding error handling for file handlers.
+        console: Also create a console handler when `filename` is provided.
+        show_icon: Use configured level icons instead of symbols.
+        show_path: Show source file path in console output.
+        show_time: Show timestamps in console output.
+        boxes: Render each console log record inside a Rich panel.
+        rich_tracebacks: Render Rich tracebacks in console output.
+        markup: Enable Rich markup in console messages.
+        defaults_path: Optional defaults file used instead of the packaged
+            config. Intended for tests and advanced integrations.
+
+    Raises:
+        ValueError: If boolean options or rotation values are invalid, or if
+            mutually exclusive handler options are combined.
+    """
     root_logger = logging.getLogger()
     if root_logger.handlers and not force:
         return
@@ -517,6 +656,22 @@ def basicConfigFromYaml(
     defaults_path: str | Path | None = None,
     force: bool = False,
 ) -> None:
+    """Configure the process root logger from YAML.
+
+    The packaged `tunning/conf.yml` defaults are loaded first. If `config_path`
+    is provided, it is deep-merged on top. The resulting config is applied to
+    the real process root logger with stdlib `logging.config.dictConfig()`.
+
+    Args:
+        config_path: Optional YAML override path. If omitted, packaged defaults
+            are used directly.
+        defaults_path: Optional defaults file used instead of the packaged
+            config. Intended for tests and advanced integrations.
+        force: Replace existing root handlers.
+
+    Raises:
+        ValueError: If the resolved YAML config is invalid.
+    """
     root_logger = logging.getLogger()
     if root_logger.handlers and not force:
         return

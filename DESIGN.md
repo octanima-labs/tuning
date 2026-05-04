@@ -57,6 +57,7 @@ Implemented:
 - mypy type checking configuration
 - pre-commit hook configuration
 - GitHub Actions CI across Python 3.11 through 3.14
+- MkDocs documentation generated from public API docstrings
 - example script under `examples/`
 - user-facing config reference in `README.md`
 
@@ -85,6 +86,8 @@ Package files:
 - `tunning/__init__.py`: public exports
 - `tunning/logger.py`: implementation
 - `tunning/conf.yml`: packaged default config
+- `docs/`: generated API reference and guide pages
+- `mkdocs.yml`: documentation site configuration
 
 Examples:
 - `examples/usage.py`: prototype usage example with selectable config modes
@@ -282,3 +285,10 @@ Rules:
 - Tracebacks render inside the same box as the message.
 - Each log record gets its own box. Grouping consecutive records can be added
   later if buffering and flush semantics are worth the complexity.
+
+## TODOs
+
+- Fix docs. The links are broken in the web docs
+- Review readme and related conf.
+- Design a banner/icon for the library.
+- Add pictures to the readme/conf

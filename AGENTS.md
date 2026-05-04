@@ -26,6 +26,7 @@
 - Format check: `./.venv/bin/ruff format --check .`.
 - Lint: `./.venv/bin/ruff check .`.
 - Type check: `./.venv/bin/mypy tunning tests`.
+- Docs build: `./.venv/bin/mkdocs build --strict` after installing `.[docs]`.
 - Pre-commit: `./.venv/bin/pre-commit run --all-files`.
 - Basic example: `./.venv/bin/python examples/usage.py`.
 
@@ -57,6 +58,7 @@
 - The current runtime roadmap is stabilized for this prototype pass. Treat grouped boxes as a follow-up feature, not current implementation scope.
 - Packaging metadata and editable install behavior have been verified; docs URLs are a packaging follow-up, not a runtime gap.
 - Quality gates use pytest, Ruff, mypy, pre-commit, and GitHub Actions across Python 3.11 through 3.14.
+- Public API docs are generated with MkDocs and mkdocstrings from source docstrings. Keep docstrings current when changing public APIs.
 
 ## Doc Reliability
 - `README.md` is the user-facing usage guide.
