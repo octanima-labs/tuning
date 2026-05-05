@@ -16,9 +16,9 @@ import yaml
 from rich.panel import Panel
 from rich.text import Text
 
-import tunning
-import tunning.logger as tunning_module
-from tunning import TunnedHandler, TunnedLogger
+import tuning
+import tuning.logger as tuning_module
+from tuning import TunedHandler, TunedLogger
 
 
 def _write_yaml(path: Path, data: dict) -> None:
@@ -31,7 +31,7 @@ def _write_empty_defaults(path: Path) -> None:
 
 
 def _packaged_config_text() -> str:
-    return Path(tunning_module.__file__).with_name("conf.yml").read_text(encoding="utf8")
+    return Path(tuning_module.__file__).with_name("conf.yml").read_text(encoding="utf8")
 
 
 def _unique_level_name(prefix: str) -> str:
@@ -51,11 +51,11 @@ def _drop_logger(name: str) -> None:
             handler.close()
 
 
-def _console_handler(logger: logging.Logger) -> TunnedHandler:
+def _console_handler(logger: logging.Logger) -> TunedHandler:
     for handler in logger.handlers:
-        if isinstance(handler, TunnedHandler):
+        if isinstance(handler, TunedHandler):
             return handler
-    raise AssertionError("Expected a TunnedHandler")
+    raise AssertionError("Expected a TunedHandler")
 
 
 def _file_handler(logger: logging.Logger) -> Any:
@@ -133,7 +133,7 @@ def clean_root_logger() -> Iterator[logging.Logger]:
     root_logger.disabled = original_disabled
 
 
-def test_from_yaml_returns_tunned_logger_and_registers_levels(
+def test_from_yaml_returns_tuned_logger_and_registers_levels(
     tmp_path: Path,
     logger_name: str,
 ) -> None:
@@ -150,9 +150,9 @@ def test_from_yaml_returns_tunned_logger_and_registers_levels(
         },
     )
 
-    logger = TunnedLogger.from_yaml(config_path, name=logger_name, force=True)
+    logger = TunedLogger.from_yaml(config_path, name=logger_name, force=True)
 
-    assert isinstance(logger, TunnedLogger)
+    assert isinstance(logger, TunedLogger)
     assert hasattr(logger, "trace")
     assert logger.propagate is False
     assert logging.getLevelName(5) == "TRACE"
@@ -165,30 +165,34 @@ def test_from_yaml_returns_tunned_logger_and_registers_levels(
     logger.trace("trace message")
 
 
-def test_get_logger_returns_tunned_logger(logger_name: str) -> None:
-    logger = tunning.getLogger(logger_name)
+def test_get_logger_returns_tuned_logger(logger_name: str) -> None:
+    logger = tuning.getLogger(logger_name)
 
-    assert isinstance(logger, TunnedLogger)
-    assert tunning.getLogger(logger_name) is logger
+    assert isinstance(logger, TunedLogger)
+    assert tuning.getLogger(logger_name) is logger
     assert hasattr(logger, "trace")
     assert hasattr(logger, "success")
 
 
 def test_export_is_available_from_top_level_package() -> None:
-    assert tunning.export is tunning_module.export
+    assert tuning.export is tuning_module.export
+
+
+def test_add_level_is_available_from_top_level_package() -> None:
+    assert tuning.addLevel is tuning_module.addLevel
 
 
 def test_export_writes_packaged_config_to_directory(tmp_path: Path) -> None:
-    exported_path = tunning.export(tmp_path)
+    exported_path = tuning.export(tmp_path)
 
-    assert exported_path == (tmp_path / "tunning.yml").resolve()
+    assert exported_path == (tmp_path / "tuning.yml").resolve()
     assert exported_path.read_text(encoding="utf8") == _packaged_config_text()
 
 
 def test_export_writes_explicit_file_path(tmp_path: Path) -> None:
     target_path = tmp_path / "custom.yml"
 
-    exported_path = tunning.export(target_path)
+    exported_path = tuning.export(target_path)
 
     assert exported_path == target_path.resolve()
     assert target_path.read_text(encoding="utf8") == _packaged_config_text()
@@ -197,7 +201,7 @@ def test_export_writes_explicit_file_path(tmp_path: Path) -> None:
 def test_export_treats_nonexistent_extensionless_path_as_file(tmp_path: Path) -> None:
     target_path = tmp_path / "config"
 
-    exported_path = tunning.export(target_path)
+    exported_path = tuning.export(target_path)
 
     assert exported_path == target_path.resolve()
     assert target_path.is_file()
@@ -205,29 +209,29 @@ def test_export_treats_nonexistent_extensionless_path_as_file(tmp_path: Path) ->
 
 
 def test_export_raises_when_target_file_exists(tmp_path: Path) -> None:
-    target_path = tmp_path / "tunning.yml"
+    target_path = tmp_path / "tuning.yml"
     target_path.write_text("existing config", encoding="utf8")
 
     with pytest.raises(FileExistsError, match="already exists"):
-        tunning.export(target_path)
+        tuning.export(target_path)
 
     assert target_path.read_text(encoding="utf8") == "existing config"
 
 
 def test_export_force_overwrites_existing_file(tmp_path: Path) -> None:
-    target_path = tmp_path / "tunning.yml"
+    target_path = tmp_path / "tuning.yml"
     target_path.write_text("existing config", encoding="utf8")
 
-    exported_path = tunning.export(target_path, force=True)
+    exported_path = tuning.export(target_path, force=True)
 
     assert exported_path == target_path.resolve()
     assert target_path.read_text(encoding="utf8") == _packaged_config_text()
 
 
 def test_export_creates_parent_directories(tmp_path: Path) -> None:
-    target_path = tmp_path / "nested" / "config" / "tunning.yml"
+    target_path = tmp_path / "nested" / "config" / "tuning.yml"
 
-    exported_path = tunning.export(target_path)
+    exported_path = tuning.export(target_path)
 
     assert exported_path == target_path.resolve()
     assert target_path.read_text(encoding="utf8") == _packaged_config_text()
@@ -241,8 +245,8 @@ def test_export_none_writes_to_calling_file_directory(tmp_path: Path) -> None:
     script_path.write_text(
         "import sys\n"
         f"sys.path.insert(0, {str(repo_root)!r})\n"
-        "import tunning\n"
-        "path = tunning.export()\n"
+        "import tuning\n"
+        "path = tuning.export()\n"
         "print(path)\n",
         encoding="utf8",
     )
@@ -254,7 +258,7 @@ def test_export_none_writes_to_calling_file_directory(tmp_path: Path) -> None:
         text=True,
     )
 
-    exported_path = caller_dir / "tunning.yml"
+    exported_path = caller_dir / "tuning.yml"
     assert result.stdout.strip() == str(exported_path.resolve())
     assert exported_path.read_text(encoding="utf8") == _packaged_config_text()
 
@@ -263,13 +267,13 @@ def test_zero_config_installs_console_only_root_handler_on_first_use(
     clean_root_logger: logging.Logger,
     logger_name: str,
 ) -> None:
-    logger = tunning.getLogger(logger_name)
+    logger = tuning.getLogger(logger_name)
     _remove_current_root_handlers(clean_root_logger)
 
     logger.info("zero config output")
 
     assert len(clean_root_logger.handlers) == 1
-    assert isinstance(clean_root_logger.handlers[0], TunnedHandler)
+    assert isinstance(clean_root_logger.handlers[0], TunedHandler)
     assert not any(
         isinstance(handler, logging.FileHandler) for handler in clean_root_logger.handlers
     )
@@ -280,14 +284,14 @@ def test_zero_config_dynamic_level_methods_log_from_default_metadata(
     clean_root_logger: logging.Logger,
     logger_name: str,
 ) -> None:
-    logger = tunning.getLogger(logger_name)
+    logger = tuning.getLogger(logger_name)
     logger_as_any: Any = logger
     _remove_current_root_handlers(clean_root_logger)
 
     logger_as_any.success("zero config success")
 
     assert len(clean_root_logger.handlers) == 1
-    assert isinstance(clean_root_logger.handlers[0], TunnedHandler)
+    assert isinstance(clean_root_logger.handlers[0], TunedHandler)
 
 
 def test_zero_config_does_not_replace_existing_root_handlers(
@@ -297,7 +301,7 @@ def test_zero_config_does_not_replace_existing_root_handlers(
     _remove_current_root_handlers(clean_root_logger)
     existing_handler = logging.StreamHandler()
     clean_root_logger.addHandler(existing_handler)
-    logger = tunning.getLogger(logger_name)
+    logger = tuning.getLogger(logger_name)
 
     logger.info("handled elsewhere")
 
@@ -310,7 +314,7 @@ def test_zero_config_prompt_uses_default_prompt_style(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     captured: dict[str, Any] = {}
-    logger = tunning.getLogger(logger_name)
+    logger = tuning.getLogger(logger_name)
     _remove_current_root_handlers(clean_root_logger)
 
     def fake_input(self, prompt, **kwargs):
@@ -318,13 +322,13 @@ def test_zero_config_prompt_uses_default_prompt_style(
         captured["kwargs"] = kwargs
         return "zero prompt value"
 
-    monkeypatch.setattr(tunning_module.Console, "input", fake_input)
+    monkeypatch.setattr(tuning_module.Console, "input", fake_input)
 
     value = logger.prompt("Zero prompt")
 
     assert value == "zero prompt value"
     assert len(clean_root_logger.handlers) == 1
-    assert isinstance(clean_root_logger.handlers[0], TunnedHandler)
+    assert isinstance(clean_root_logger.handlers[0], TunedHandler)
     assert "<<<" in captured["prompt"].plain
     assert "Zero prompt" in captured["prompt"].plain
     assert _has_content_style_span(captured["prompt"], "italic bold black on magenta")
@@ -336,9 +340,9 @@ def test_basic_config_configures_root_for_child_loggers(
     logger_name: str,
 ) -> None:
     log_path = tmp_path / "logs" / "myapp.log"
-    logger = tunning.getLogger(logger_name)
+    logger = tuning.getLogger(logger_name)
 
-    tunning.basicConfig(filename=log_path, level="INFO", force=True)
+    tuning.basicConfig(filename=log_path, level="INFO", force=True)
 
     logger.info("Started")
     logger.debug("Hidden")
@@ -357,22 +361,23 @@ def test_basic_config_is_noop_when_root_already_has_handlers(
 ) -> None:
     log_path = tmp_path / "logs" / "ignored.log"
 
-    tunning.basicConfig(level="INFO", force=True)
+    tuning.basicConfig(level="INFO", force=True)
     first_handlers = clean_root_logger.handlers[:]
-    tunning.basicConfig(filename=log_path, level="ERROR")
+    tuning.basicConfig(filename=log_path, level="ERROR")
 
     assert clean_root_logger.handlers == first_handlers
-    assert isinstance(clean_root_logger.handlers[0], TunnedHandler)
+    assert isinstance(clean_root_logger.handlers[0], TunedHandler)
     assert not log_path.exists()
 
 
 def test_basic_config_applies_console_handler_options(
     clean_root_logger: logging.Logger,
 ) -> None:
-    tunning.basicConfig(
+    tuning.basicConfig(
         level="INFO",
         force=True,
         show_icon=True,
+        show_level=False,
         show_path=True,
         show_time=True,
         boxes=True,
@@ -383,6 +388,7 @@ def test_basic_config_applies_console_handler_options(
     handler = _console_handler(clean_root_logger)
 
     assert handler.show_icon is True
+    assert handler._log_render.show_level is False
     assert handler._log_render.show_path is True
     assert handler._log_render.show_time is True
     assert handler.boxes is True
@@ -390,23 +396,39 @@ def test_basic_config_applies_console_handler_options(
     assert handler.markup is False
 
 
+def test_basic_config_show_level_false_renders_message_only(
+    clean_root_logger: logging.Logger,
+) -> None:
+    tuning.basicConfig(level="INFO", force=True, show_level=False)
+    handler = _console_handler(clean_root_logger)
+    record = _log_record(message="message only output")
+    message = handler.render_message(record, record.getMessage())
+
+    rendered = handler.render(record=record, traceback=None, message_renderable=message)
+
+    assert handler._log_render.show_level is False
+    assert len(rendered.columns) == 1
+    body: Any = rendered.columns[0]._cells[0]
+    assert body._renderables == [message]
+
+
 def test_iso_format_is_exported_for_console_timestamps() -> None:
-    assert tunning.ISO_FORMAT == "[%Y-%m-%d %H:%M:%S]"
+    assert tuning.ISO_FORMAT == "[%Y-%m-%d %H:%M:%S]"
 
 
 def test_rotation_defaults_are_exported() -> None:
-    assert tunning.DEFAULT_MAX_BYTES == int(bitmath.parse_string("10 MB").bytes)
-    assert tunning.DEFAULT_BACKUP_COUNT == 3
+    assert tuning.DEFAULT_MAX_BYTES == int(bitmath.parse_string("10 MB").bytes)
+    assert tuning.DEFAULT_BACKUP_COUNT == 3
 
 
 def test_basic_config_datefmt_controls_console_timestamp(
     clean_root_logger: logging.Logger,
 ) -> None:
-    tunning.basicConfig(
+    tuning.basicConfig(
         level="INFO",
         force=True,
         show_time=True,
-        datefmt=tunning.ISO_FORMAT,
+        datefmt=tuning.ISO_FORMAT,
     )
     handler = _console_handler(clean_root_logger)
     record = _log_record()
@@ -429,17 +451,17 @@ def test_yaml_log_time_format_controls_console_timestamp(
         {
             "handlers": {
                 "console": {
-                    "()": "tunning.TunnedHandler",
+                    "()": "tuning.TunedHandler",
                     "level": "INFO",
                     "show_time": True,
-                    "log_time_format": tunning.ISO_FORMAT,
+                    "log_time_format": tuning.ISO_FORMAT,
                 }
             },
             "root": {"level": "INFO", "handlers": ["console"]},
         },
     )
 
-    tunning.basicConfigFromYaml(
+    tuning.basicConfigFromYaml(
         config_path,
         defaults_path=defaults_path,
         force=True,
@@ -456,7 +478,7 @@ def test_yaml_log_time_format_controls_console_timestamp(
 def test_console_handler_applies_level_style_to_message(
     clean_root_logger: logging.Logger,
 ) -> None:
-    tunning.basicConfig(level="INFO", force=True)
+    tuning.basicConfig(level="INFO", force=True)
     handler = _console_handler(clean_root_logger)
     record = logging.LogRecord(
         name="tests.console-style",
@@ -478,7 +500,7 @@ def test_console_handler_applies_level_style_to_message(
 def test_console_handler_uses_compact_symbol_prefix_width(
     clean_root_logger: logging.Logger,
 ) -> None:
-    tunning.basicConfig(level="INFO", force=True)
+    tuning.basicConfig(level="INFO", force=True)
     handler = _console_handler(clean_root_logger)
     record = logging.LogRecord(
         name="tests.console-prefix",
@@ -500,7 +522,7 @@ def test_console_handler_uses_compact_symbol_prefix_width(
 def test_console_handler_styles_level_separator_with_prefix(
     clean_root_logger: logging.Logger,
 ) -> None:
-    tunning.basicConfig(level="INFO", force=True)
+    tuning.basicConfig(level="INFO", force=True)
     handler = _console_handler(clean_root_logger)
     record = logging.LogRecord(
         name="tests.console-prefix",
@@ -522,7 +544,7 @@ def test_console_handler_styles_level_separator_with_prefix(
 def test_console_handler_uses_compact_icon_prefix_width(
     clean_root_logger: logging.Logger,
 ) -> None:
-    tunning.basicConfig(level="INFO", force=True, show_icon=True)
+    tuning.basicConfig(level="INFO", force=True, show_icon=True)
     handler = _console_handler(clean_root_logger)
     record = logging.LogRecord(
         name="tests.console-prefix",
@@ -544,7 +566,7 @@ def test_console_handler_uses_compact_icon_prefix_width(
 def test_console_handler_styles_background_level_separator(
     clean_root_logger: logging.Logger,
 ) -> None:
-    tunning.basicConfig(level="CRITICAL", force=True)
+    tuning.basicConfig(level="CRITICAL", force=True)
     handler = _console_handler(clean_root_logger)
     record = logging.LogRecord(
         name="tests.console-prefix",
@@ -565,7 +587,7 @@ def test_console_handler_styles_background_level_separator(
 def test_console_handler_renders_boxed_record_with_level_title(
     clean_root_logger: logging.Logger,
 ) -> None:
-    tunning.basicConfig(level="INFO", force=True, boxes=True)
+    tuning.basicConfig(level="INFO", force=True, boxes=True)
     handler = _console_handler(clean_root_logger)
     record = _log_record(message="boxed output")
     message = handler.render_message(record, record.getMessage())
@@ -590,7 +612,7 @@ def test_console_handler_renders_boxed_record_with_level_title(
 def test_boxed_render_styles_critical_panel_fill(
     clean_root_logger: logging.Logger,
 ) -> None:
-    tunning.basicConfig(level="CRITICAL", force=True, boxes=True)
+    tuning.basicConfig(level="CRITICAL", force=True, boxes=True)
     handler = _console_handler(clean_root_logger)
     record = _log_record(level=logging.CRITICAL, message="critical boxed output")
     message = handler.render_message(record, record.getMessage())
@@ -609,7 +631,7 @@ def test_boxed_render_styles_critical_panel_fill(
 def test_boxed_render_keeps_time_and_path_outside_panel(
     clean_root_logger: logging.Logger,
 ) -> None:
-    tunning.basicConfig(
+    tuning.basicConfig(
         level="INFO",
         force=True,
         boxes=True,
@@ -625,11 +647,11 @@ def test_boxed_render_keeps_time_and_path_outside_panel(
     assert len(rendered.columns) == 3
     assert isinstance(rendered.columns[1]._cells[0], Panel)
     assert rendered.columns[0]._cells[0].plain.endswith(" ")
-    assert "test_tunned_logger.py:123" in rendered.columns[2]._cells[0].plain
+    assert "test_tuned_logger.py:123" in rendered.columns[2]._cells[0].plain
 
 
 def test_boxed_render_honors_hidden_level() -> None:
-    handler = TunnedHandler(boxes=True, show_level=False, show_time=False)
+    handler = TunedHandler(boxes=True, show_level=False, show_time=False)
     record = _log_record(message="untitled boxed output")
     message = handler.render_message(record, record.getMessage())
 
@@ -641,7 +663,7 @@ def test_boxed_render_honors_hidden_level() -> None:
 
 
 def test_console_handler_keeps_long_fallback_labels_untruncated() -> None:
-    handler = TunnedHandler()
+    handler = TunedHandler()
     record = logging.LogRecord(
         name="tests.console-prefix",
         level=123456,
@@ -666,10 +688,10 @@ def test_basic_config_force_replaces_root_handlers(
     logger_name: str,
 ) -> None:
     log_path = tmp_path / "logs" / "forced.log"
-    logger = tunning.getLogger(logger_name)
+    logger = tuning.getLogger(logger_name)
 
-    tunning.basicConfig(level="INFO")
-    tunning.basicConfig(filename=log_path, level="INFO", force=True)
+    tuning.basicConfig(level="INFO")
+    tuning.basicConfig(filename=log_path, level="INFO", force=True)
 
     logger.info("forced output")
     _flush_handlers(clean_root_logger)
@@ -684,9 +706,9 @@ def test_basic_config_filename_is_file_only_and_uses_detailed_formatter(
     logger_name: str,
 ) -> None:
     log_path = tmp_path / "logs" / "file-only.log"
-    logger = tunning.getLogger(logger_name)
+    logger = tuning.getLogger(logger_name)
 
-    tunning.basicConfig(
+    tuning.basicConfig(
         filename=log_path,
         level="INFO",
         force=True,
@@ -701,7 +723,7 @@ def test_basic_config_filename_is_file_only_and_uses_detailed_formatter(
     _flush_handlers(clean_root_logger)
 
     assert len(clean_root_logger.handlers) == 1
-    assert not isinstance(clean_root_logger.handlers[0], TunnedHandler)
+    assert not isinstance(clean_root_logger.handlers[0], TunedHandler)
     assert clean_root_logger.handlers[0].formatter is not None
     assert (
         clean_root_logger.handlers[0].formatter._fmt
@@ -720,9 +742,9 @@ def test_basic_config_filename_with_console_creates_file_and_console_handlers(
     logger_name: str,
 ) -> None:
     log_path = tmp_path / "logs" / "with-console.log"
-    logger = tunning.getLogger(logger_name)
+    logger = tuning.getLogger(logger_name)
 
-    tunning.basicConfig(
+    tuning.basicConfig(
         filename=log_path,
         console=True,
         level="INFO",
@@ -745,7 +767,7 @@ def test_basic_config_filename_without_rotation_uses_plain_file_handler(
 ) -> None:
     log_path = tmp_path / "logs" / "plain.log"
 
-    tunning.basicConfig(filename=log_path, level="INFO", force=True)
+    tuning.basicConfig(filename=log_path, level="INFO", force=True)
 
     file_handler = clean_root_logger.handlers[0]
     assert isinstance(file_handler, logging.FileHandler)
@@ -758,7 +780,7 @@ def test_basic_config_max_bytes_uses_rotating_file_handler(
 ) -> None:
     log_path = tmp_path / "logs" / "rotating.log"
 
-    tunning.basicConfig(
+    tuning.basicConfig(
         filename=log_path,
         level="INFO",
         force=True,
@@ -783,7 +805,7 @@ def test_basic_config_accepts_human_readable_max_bytes(
 ) -> None:
     log_path = tmp_path / "logs" / "human-readable.log"
 
-    tunning.basicConfig(
+    tuning.basicConfig(
         filename=log_path,
         level="INFO",
         force=True,
@@ -804,7 +826,7 @@ def test_basic_config_max_bytes_without_backup_count_warns_and_uses_default(
     log_path = tmp_path / "logs" / "default-backups.log"
 
     with pytest.warns(UserWarning, match="DEFAULT_BACKUP_COUNT"):
-        tunning.basicConfig(
+        tuning.basicConfig(
             filename=log_path,
             level="INFO",
             force=True,
@@ -814,7 +836,7 @@ def test_basic_config_max_bytes_without_backup_count_warns_and_uses_default(
     file_handler = clean_root_logger.handlers[0]
     assert isinstance(file_handler, logging.handlers.RotatingFileHandler)
     assert file_handler.maxBytes == int(bitmath.parse_string("1 MB").bytes)
-    assert file_handler.backupCount == tunning.DEFAULT_BACKUP_COUNT
+    assert file_handler.backupCount == tuning.DEFAULT_BACKUP_COUNT
 
 
 def test_basic_config_backup_count_without_max_bytes_warns_and_uses_default(
@@ -824,7 +846,7 @@ def test_basic_config_backup_count_without_max_bytes_warns_and_uses_default(
     log_path = tmp_path / "logs" / "default-max-bytes.log"
 
     with pytest.warns(UserWarning, match="DEFAULT_MAX_BYTES"):
-        tunning.basicConfig(
+        tuning.basicConfig(
             filename=log_path,
             level="INFO",
             force=True,
@@ -833,7 +855,7 @@ def test_basic_config_backup_count_without_max_bytes_warns_and_uses_default(
 
     file_handler = clean_root_logger.handlers[0]
     assert isinstance(file_handler, logging.handlers.RotatingFileHandler)
-    assert file_handler.maxBytes == tunning.DEFAULT_MAX_BYTES
+    assert file_handler.maxBytes == tuning.DEFAULT_MAX_BYTES
     assert file_handler.backupCount == 4
 
 
@@ -847,10 +869,10 @@ def test_basic_config_ignores_rotation_options_without_filename(
         "backup_count": -1,
     }
 
-    tunning.basicConfig(**kwargs)
+    tuning.basicConfig(**kwargs)
 
     assert len(clean_root_logger.handlers) == 1
-    assert isinstance(clean_root_logger.handlers[0], TunnedHandler)
+    assert isinstance(clean_root_logger.handlers[0], TunedHandler)
 
 
 @pytest.mark.parametrize("max_bytes", [0, -1, True, object(), "not a size"])
@@ -862,7 +884,7 @@ def test_basic_config_invalid_max_bytes_raises(
     log_path = tmp_path / "logs" / "invalid-size.log"
 
     with pytest.raises(ValueError, match="max_bytes"):
-        tunning.basicConfig(
+        tuning.basicConfig(
             filename=log_path,
             level="INFO",
             force=True,
@@ -880,7 +902,7 @@ def test_basic_config_invalid_backup_count_raises(
     log_path = tmp_path / "logs" / "invalid-backups.log"
 
     with pytest.raises(ValueError, match="backup_count"):
-        tunning.basicConfig(
+        tuning.basicConfig(
             filename=log_path,
             level="INFO",
             force=True,
@@ -891,7 +913,15 @@ def test_basic_config_invalid_backup_count_raises(
 
 @pytest.mark.parametrize(
     "option",
-    ["console", "show_icon", "show_path", "show_time", "rich_tracebacks", "markup"],
+    [
+        "console",
+        "show_icon",
+        "show_level",
+        "show_path",
+        "show_time",
+        "rich_tracebacks",
+        "markup",
+    ],
 )
 def test_basic_config_boolean_options_must_be_boolean(
     clean_root_logger: logging.Logger,
@@ -900,7 +930,7 @@ def test_basic_config_boolean_options_must_be_boolean(
     kwargs: dict[str, Any] = {option: "yes"}
 
     with pytest.raises(ValueError, match=f"{option} must be a boolean"):
-        tunning.basicConfig(force=True, **kwargs)
+        tuning.basicConfig(force=True, **kwargs)
 
 
 def test_basic_config_installs_default_custom_level_methods(
@@ -909,9 +939,9 @@ def test_basic_config_installs_default_custom_level_methods(
     logger_name: str,
 ) -> None:
     log_path = tmp_path / "logs" / "trace.log"
-    logger = tunning.getLogger(logger_name)
+    logger = tuning.getLogger(logger_name)
 
-    tunning.basicConfig(filename=log_path, level="TRACE", force=True)
+    tuning.basicConfig(filename=log_path, level="TRACE", force=True)
 
     logger_as_any: Any = logger
     logger_as_any.trace("trace output")
@@ -936,9 +966,9 @@ def test_basic_config_from_yaml_configures_actual_root_logger(
             "root": {"level": "INFO", "handlers": ["file"]},
         },
     )
-    logger = tunning.getLogger(logger_name)
+    logger = tuning.getLogger(logger_name)
 
-    tunning.basicConfigFromYaml(config_path, defaults_path=defaults_path, force=True)
+    tuning.basicConfigFromYaml(config_path, defaults_path=defaults_path, force=True)
 
     logger.info("root inherited output")
     _flush_handlers(clean_root_logger)
@@ -952,14 +982,14 @@ def test_basic_config_from_yaml_without_path_loads_packaged_defaults(
     clean_root_logger: logging.Logger,
     logger_name: str,
 ) -> None:
-    logger = tunning.getLogger(logger_name)
+    logger = tuning.getLogger(logger_name)
 
-    tunning.basicConfigFromYaml(force=True)
+    tuning.basicConfigFromYaml(force=True)
 
     logger.info("packaged default output")
     _flush_handlers(clean_root_logger)
 
-    assert any(isinstance(handler, TunnedHandler) for handler in clean_root_logger.handlers)
+    assert any(isinstance(handler, TunedHandler) for handler in clean_root_logger.handlers)
     assert any(isinstance(handler, logging.FileHandler) for handler in clean_root_logger.handlers)
 
 
@@ -979,7 +1009,7 @@ def test_basic_config_from_yaml_prompt_uses_inherited_root_handler(
             "prompt": {"symbol": "??", "icon": "!!", "style": "green"},
             "handlers": {
                 "console": {
-                    "()": "tunning.TunnedHandler",
+                    "()": "tuning.TunedHandler",
                     "level": "DEBUG",
                     "show_icon": True,
                 }
@@ -987,9 +1017,9 @@ def test_basic_config_from_yaml_prompt_uses_inherited_root_handler(
             "root": {"level": "DEBUG", "handlers": ["console"]},
         },
     )
-    logger = tunning.getLogger(logger_name)
+    logger = tuning.getLogger(logger_name)
 
-    tunning.basicConfigFromYaml(config_path, defaults_path=defaults_path, force=True)
+    tuning.basicConfigFromYaml(config_path, defaults_path=defaults_path, force=True)
     handler = _console_handler(clean_root_logger)
 
     def fake_input(prompt, **kwargs):
@@ -1026,7 +1056,7 @@ def test_prompt_uses_the_first_handler_show_icon_setting(
         },
     )
 
-    logger = TunnedLogger.from_yaml(config_path, name=logger_name, force=True)
+    logger = TunedLogger.from_yaml(config_path, name=logger_name, force=True)
     handler = _console_handler(logger)
     captured: dict[str, Any] = {}
 
@@ -1068,7 +1098,7 @@ def test_invalid_builtin_level_code_raises_a_clear_error(
     )
 
     with pytest.raises(ValueError, match="Built-in level DEBUG"):
-        TunnedLogger.from_yaml(config_path, name=logger_name, force=True)
+        TunedLogger.from_yaml(config_path, name=logger_name, force=True)
 
 
 def test_from_yaml_is_idempotent_and_force_reconfigures(
@@ -1098,14 +1128,14 @@ def test_from_yaml_is_idempotent_and_force_reconfigures(
         },
     )
 
-    logger = TunnedLogger.from_yaml(config_path_one, name=logger_name, force=True)
-    same_logger = TunnedLogger.from_yaml(config_path_one, name=logger_name)
+    logger = TunedLogger.from_yaml(config_path_one, name=logger_name, force=True)
+    same_logger = TunedLogger.from_yaml(config_path_one, name=logger_name)
     assert logger is same_logger
 
     with pytest.raises(ValueError, match="different config"):
-        TunnedLogger.from_yaml(config_path_two, name=logger_name)
+        TunedLogger.from_yaml(config_path_two, name=logger_name)
 
-    reconfigured_logger = TunnedLogger.from_yaml(
+    reconfigured_logger = TunedLogger.from_yaml(
         config_path_two,
         name=logger_name,
         force=True,
@@ -1131,10 +1161,10 @@ def test_existing_standard_logger_name_raises(
     )
 
     standard_logger = logging.getLogger(logger_name)
-    assert not isinstance(standard_logger, TunnedLogger)
+    assert not isinstance(standard_logger, TunedLogger)
 
-    with pytest.raises(ValueError, match="expected TunnedLogger"):
-        TunnedLogger.from_yaml(config_path, name=logger_name, force=True)
+    with pytest.raises(ValueError, match="expected TunedLogger"):
+        TunedLogger.from_yaml(config_path, name=logger_name, force=True)
 
 
 def test_partial_override_deep_merges_with_defaults(
@@ -1157,7 +1187,7 @@ def test_partial_override_deep_merges_with_defaults(
         },
     )
 
-    logger = TunnedLogger.from_yaml(config_path, name=logger_name, force=True)
+    logger = TunedLogger.from_yaml(config_path, name=logger_name, force=True)
 
     console_handler = _console_handler(logger)
     file_handler = _file_handler(logger)
@@ -1170,7 +1200,7 @@ def test_partial_override_deep_merges_with_defaults(
     assert file_handler.backupCount == 3
 
 
-def test_boxes_from_yaml_configures_tunned_handler(
+def test_boxes_from_yaml_configures_tuned_handler(
     tmp_path: Path,
     logger_name: str,
 ) -> None:
@@ -1182,7 +1212,7 @@ def test_boxes_from_yaml_configures_tunned_handler(
         {
             "handlers": {
                 "console": {
-                    "()": "tunning.TunnedHandler",
+                    "()": "tuning.TunedHandler",
                     "boxes": True,
                 }
             },
@@ -1190,7 +1220,7 @@ def test_boxes_from_yaml_configures_tunned_handler(
         },
     )
 
-    logger = TunnedLogger.from_yaml(
+    logger = TunedLogger.from_yaml(
         config_path, name=logger_name, defaults_path=defaults_path, force=True
     )
 
@@ -1225,12 +1255,12 @@ def test_custom_level_conflict_by_name_raises(
         },
     )
 
-    TunnedLogger.from_yaml(
+    TunedLogger.from_yaml(
         config_path_one, name=logger_name, defaults_path=defaults_path, force=True
     )
 
     with pytest.raises(ValueError, match="different definition"):
-        TunnedLogger.from_yaml(
+        TunedLogger.from_yaml(
             config_path_two, name=logger_name, defaults_path=defaults_path, force=True
         )
 
@@ -1263,12 +1293,12 @@ def test_custom_level_conflict_by_code_raises(
         },
     )
 
-    TunnedLogger.from_yaml(
+    TunedLogger.from_yaml(
         config_path_one, name=logger_name, defaults_path=defaults_path, force=True
     )
 
     with pytest.raises(ValueError, match="already registered"):
-        TunnedLogger.from_yaml(
+        TunedLogger.from_yaml(
             config_path_two, name=logger_name, defaults_path=defaults_path, force=True
         )
 
@@ -1294,7 +1324,7 @@ def test_level_aliases_are_rejected(
     )
 
     with pytest.raises(ValueError, match=f"Use {canonical} instead of {alias}"):
-        TunnedLogger.from_yaml(
+        TunedLogger.from_yaml(
             config_path, name=logger_name, defaults_path=defaults_path, force=True
         )
 
@@ -1317,7 +1347,7 @@ def test_input_level_is_rejected_in_favor_of_prompt(
     )
 
     with pytest.raises(ValueError, match="top-level prompt"):
-        TunnedLogger.from_yaml(
+        TunedLogger.from_yaml(
             config_path, name=logger_name, defaults_path=defaults_path, force=True
         )
 
@@ -1342,8 +1372,8 @@ def test_show_icon_on_non_custom_rich_handler_raises(
         },
     )
 
-    with pytest.raises(ValueError, match="not a TunnedHandler"):
-        TunnedLogger.from_yaml(
+    with pytest.raises(ValueError, match="not a TunedHandler"):
+        TunedLogger.from_yaml(
             config_path, name=logger_name, defaults_path=defaults_path, force=True
         )
 
@@ -1360,7 +1390,7 @@ def test_show_icon_must_be_boolean(
         {
             "handlers": {
                 "console": {
-                    "()": "tunning.TunnedHandler",
+                    "()": "tuning.TunedHandler",
                     "show_icon": "yes",
                 }
             },
@@ -1369,7 +1399,7 @@ def test_show_icon_must_be_boolean(
     )
 
     with pytest.raises(ValueError, match="show_icon must be a boolean"):
-        TunnedLogger.from_yaml(
+        TunedLogger.from_yaml(
             config_path, name=logger_name, defaults_path=defaults_path, force=True
         )
 
@@ -1394,8 +1424,8 @@ def test_boxes_on_non_custom_rich_handler_raises(
         },
     )
 
-    with pytest.raises(ValueError, match="not a TunnedHandler"):
-        TunnedLogger.from_yaml(
+    with pytest.raises(ValueError, match="not a TunedHandler"):
+        TunedLogger.from_yaml(
             config_path, name=logger_name, defaults_path=defaults_path, force=True
         )
 
@@ -1412,7 +1442,7 @@ def test_boxes_must_be_boolean(
         {
             "handlers": {
                 "console": {
-                    "()": "tunning.TunnedHandler",
+                    "()": "tuning.TunedHandler",
                     "boxes": "yes",
                 }
             },
@@ -1421,7 +1451,7 @@ def test_boxes_must_be_boolean(
     )
 
     with pytest.raises(ValueError, match="boxes must be a boolean"):
-        TunnedLogger.from_yaml(
+        TunedLogger.from_yaml(
             config_path, name=logger_name, defaults_path=defaults_path, force=True
         )
 
@@ -1449,7 +1479,7 @@ def test_invalid_human_readable_max_bytes_raises(
     )
 
     with pytest.raises(ValueError, match="Invalid maxBytes"):
-        TunnedLogger.from_yaml(
+        TunedLogger.from_yaml(
             config_path, name=logger_name, defaults_path=defaults_path, force=True
         )
 
@@ -1476,7 +1506,7 @@ def test_explicit_requested_logger_config_is_supported(
         },
     )
 
-    logger = TunnedLogger.from_yaml(
+    logger = TunedLogger.from_yaml(
         config_path, name=logger_name, defaults_path=defaults_path, force=True
     )
 
@@ -1508,7 +1538,7 @@ def test_unexpected_logger_entries_raise(
     )
 
     with pytest.raises(ValueError, match="unexpected entries"):
-        TunnedLogger.from_yaml(
+        TunedLogger.from_yaml(
             config_path, name=logger_name, defaults_path=defaults_path, force=True
         )
 
@@ -1529,7 +1559,7 @@ def test_config_without_root_or_requested_logger_raises(
     )
 
     with pytest.raises(ValueError, match="either root or the requested logger"):
-        TunnedLogger.from_yaml(
+        TunedLogger.from_yaml(
             config_path, name=logger_name, defaults_path=defaults_path, force=True
         )
 
@@ -1551,7 +1581,7 @@ def test_prompt_uses_symbol_when_icons_are_disabled(
         },
     )
 
-    logger = TunnedLogger.from_yaml(config_path, name=logger_name, force=True)
+    logger = TunedLogger.from_yaml(config_path, name=logger_name, force=True)
     handler = _console_handler(logger)
     captured: dict[str, Any] = {}
 
@@ -1593,8 +1623,8 @@ def test_prompt_falls_back_to_new_console_without_custom_rich_handler(
         captured["kwargs"] = kwargs
         return "fallback value"
 
-    monkeypatch.setattr(tunning_module.Console, "input", fake_input)
-    logger = TunnedLogger.from_yaml(
+    monkeypatch.setattr(tuning_module.Console, "input", fake_input)
+    logger = TunedLogger.from_yaml(
         config_path, name=logger_name, defaults_path=defaults_path, force=True
     )
 
@@ -1605,6 +1635,131 @@ def test_prompt_falls_back_to_new_console_without_custom_rich_handler(
     assert "Fallback prompt" in captured["prompt"].plain
     assert captured["kwargs"]["markup"] is False
     assert captured["kwargs"]["password"] is False
+
+
+def test_add_level_registers_runtime_method_for_existing_and_future_loggers(
+    tmp_path: Path,
+    clean_root_logger: logging.Logger,
+    logger_name: str,
+) -> None:
+    log_path = tmp_path / "logs" / "runtime.log"
+    level_name = _unique_level_name("runtime-level")
+    level_code = _unique_level_code()
+    method_name = level_name.lower().replace("-", "_")
+    logger = tuning.getLogger(logger_name)
+    future_logger_name = f"{logger_name}.future"
+
+    with pytest.raises(AttributeError):
+        getattr(logger, method_name)("before registration")
+
+    try:
+        tuning.addLevel(level_code, level_name, symbol="RL", style="green")
+        future_logger = tuning.getLogger(future_logger_name)
+        tuning.basicConfig(filename=log_path, level=level_name, force=True)
+
+        getattr(logger, method_name)("existing runtime output")
+        getattr(future_logger, method_name)("future runtime output")
+        _flush_handlers(clean_root_logger)
+    finally:
+        _drop_logger(future_logger_name)
+
+    content = log_path.read_text(encoding="utf8")
+    assert "existing runtime output" in content
+    assert "future runtime output" in content
+
+
+def test_add_level_registers_console_metadata(
+    clean_root_logger: logging.Logger,
+) -> None:
+    level_name = _unique_level_name("metadata-level")
+    level_code = _unique_level_code()
+    tuning.addLevel(level_code, level_name, symbol="MT", icon="RUN", style="bold green")
+    tuning.basicConfig(level=level_name, force=True, show_icon=True)
+    handler = _console_handler(clean_root_logger)
+    record = _log_record(level=level_code)
+
+    level_text = handler.get_level_text(record)
+    message = handler.render_message(record, record.getMessage())
+
+    assert level_text.plain == "RUN"
+    assert _has_full_style_span(level_text, "bold green")
+    assert isinstance(message, Text)
+    assert _has_full_style_span(message, "bold green")
+
+
+def test_add_level_is_idempotent_for_same_definition() -> None:
+    level_name = _unique_level_name("idempotent-level")
+    level_code = _unique_level_code()
+
+    tuning.addLevel(level_code, level_name, symbol="ID", style="blue")
+    tuning.addLevel(level_code, level_name, symbol="ID", style="blue")
+
+    assert logging.getLevelName(level_code) == level_name
+
+
+def test_add_level_conflicting_name_raises() -> None:
+    level_name = _unique_level_name("name-conflict")
+    tuning.addLevel(_unique_level_code(), level_name, symbol="NC")
+
+    with pytest.raises(ValueError, match="different definition"):
+        tuning.addLevel(_unique_level_code(), level_name, symbol="NC")
+
+
+def test_add_level_conflicting_code_raises() -> None:
+    level_code = _unique_level_code()
+    tuning.addLevel(level_code, _unique_level_name("code-conflict-one"), symbol="C1")
+
+    with pytest.raises(ValueError, match="already registered|reserved"):
+        tuning.addLevel(level_code, _unique_level_name("code-conflict-two"), symbol="C2")
+
+
+def test_add_level_method_conflict_raises_without_partial_registration() -> None:
+    level_prefix = f"METHOD-CONFLICT-{uuid.uuid4().hex}"
+    first_name = f"{level_prefix}-ONE"
+    second_name = f"{level_prefix}_ONE"
+    second_code = _unique_level_code()
+    tuning.addLevel(_unique_level_code(), first_name, symbol="M1")
+
+    with pytest.raises(ValueError, match="already bound"):
+        tuning.addLevel(second_code, second_name, symbol="M2")
+
+    assert logging.getLevelName(second_code) == f"Level {second_code}"
+
+
+@pytest.mark.parametrize(
+    "name",
+    ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL", "WARN", "FATAL", "INPUT"],
+)
+def test_add_level_rejects_reserved_names(name: str) -> None:
+    with pytest.raises(ValueError):
+        tuning.addLevel(_unique_level_code(), name)
+
+
+@pytest.mark.parametrize("name", ["", "MY CUSTOM", "1_LEVEL", "MY.LEVEL", "class"])
+def test_add_level_rejects_invalid_names(name: str) -> None:
+    with pytest.raises(ValueError, match="name"):
+        tuning.addLevel(_unique_level_code(), name)
+
+
+@pytest.mark.parametrize("num", [True, object(), "7"])
+def test_add_level_rejects_invalid_level_codes(num: Any) -> None:
+    with pytest.raises(ValueError, match="num must be an integer"):
+        tuning.addLevel(num, _unique_level_name("invalid-code"))
+
+
+@pytest.mark.parametrize(
+    "kwargs, message",
+    [
+        ({"symbol": "TOO-LONG"}, "symbol"),
+        ({"icon": object()}, "icon"),
+    ],
+)
+def test_add_level_rejects_invalid_metadata(
+    kwargs: dict[str, Any],
+    message: str,
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        tuning.addLevel(_unique_level_code(), _unique_level_name("invalid-meta"), **kwargs)
 
 
 def test_custom_level_with_hyphen_creates_snake_case_method_and_logs(
@@ -1639,7 +1794,7 @@ def test_custom_level_with_hyphen_creates_snake_case_method_and_logs(
         },
     )
 
-    logger = TunnedLogger.from_yaml(
+    logger = TunedLogger.from_yaml(
         config_path, name=logger_name, defaults_path=defaults_path, force=True
     )
     log_method = getattr(logger, method_name)
@@ -1679,7 +1834,7 @@ def test_custom_level_reports_user_call_site(
         },
     )
 
-    logger = TunnedLogger.from_yaml(
+    logger = TunedLogger.from_yaml(
         config_path, name=logger_name, defaults_path=defaults_path, force=True
     )
     log_method = getattr(logger, method_name)
@@ -1689,7 +1844,7 @@ def test_custom_level_reports_user_call_site(
         handler.flush()
 
     content = log_path.read_text(encoding="utf8")
-    assert "test_tunned_logger.py:test_custom_level_reports_user_call_site" in content
+    assert "test_tuned_logger.py:test_custom_level_reports_user_call_site" in content
     assert "_levels.py" not in content
 
 
@@ -1721,7 +1876,7 @@ def test_custom_level_respects_user_stacklevel(
         },
     )
 
-    logger = TunnedLogger.from_yaml(
+    logger = TunedLogger.from_yaml(
         config_path, name=logger_name, defaults_path=defaults_path, force=True
     )
     log_method = getattr(logger, method_name)
@@ -1734,6 +1889,6 @@ def test_custom_level_respects_user_stacklevel(
         handler.flush()
 
     content = log_path.read_text(encoding="utf8")
-    assert "test_tunned_logger.py:test_custom_level_respects_user_stacklevel" in content
+    assert "test_tuned_logger.py:test_custom_level_respects_user_stacklevel" in content
     assert "helper" not in content
     assert "_levels.py" not in content

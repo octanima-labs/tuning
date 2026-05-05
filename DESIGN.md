@@ -1,12 +1,12 @@
-# tunning Design
+# tuning Design
 
-`tunning` is a small Python logging helper for CLI applications. It wraps
+`tuning` is a small Python logging helper for CLI applications. It wraps
 stdlib `logging` and `rich` so an app can emit readable terminal logs and
 detailed rotating file logs from programmatic or YAML-driven configuration.
 
-The preferred runtime APIs are `tunning.getLogger(...)`,
-`tunning.basicConfig(...)`, and `tunning.basicConfigFromYaml(...)`.
-`TunnedLogger.from_yaml(...)` remains available for configuring one named logger
+The preferred runtime APIs are `tuning.getLogger(...)`,
+`tuning.basicConfig(...)`, and `tuning.basicConfigFromYaml(...)`.
+`TunedLogger.from_yaml(...)` remains available for configuring one named logger
 directly.
 
 ## Problem
@@ -24,23 +24,23 @@ remaining compatible with stdlib `logging`.
 ## Current Status
 
 This project is an early package prototype. The core flow is implemented and the
-package identity is now `tunning`.
+package identity is now `tuning`.
 
 Implemented:
-- `tunning.getLogger(...)` for creating named `TunnedLogger` instances
-- `tunning.basicConfig(...)` for stdlib-like root logger configuration
-- `tunning.basicConfigFromYaml(...)` for root logger configuration from YAML
+- `tuning.getLogger(...)` for creating named `TunedLogger` instances
+- `tuning.basicConfig(...)` for stdlib-like root logger configuration
+- `tuning.basicConfigFromYaml(...)` for root logger configuration from YAML
 - lazy console-only zero configuration when loggers are used before explicit configuration
-- `TunnedLogger.from_yaml(...)` for named logger configuration
-- package import through `tunning`
+- `TunedLogger.from_yaml(...)` for named logger configuration
+- package import through `tuning`
 - package metadata in `pyproject.toml`
 - MIT license metadata
-- packaged default config in `tunning/conf.yml`
+- packaged default config in `tuning/conf.yml`
 - YAML default loading and deep-merge override loading
-- `tunning.export(...)` for writing a full starter YAML config
+- `tuning.export(...)` for writing a full starter YAML config
 - root logger configuration with stdlib-like inheritance for child loggers
 - named logger configuration without configuring the process root logger
-- `TunnedHandler` for console output prefixes
+- `TunedHandler` for console output prefixes
 - rotating file handler support through stdlib `logging.handlers`
 - custom level metadata through top-level `levels:`
 - dynamic custom level methods such as `trace()` and `success()`
@@ -52,7 +52,7 @@ Implemented:
 - rejection of `levels.INPUT` in favor of top-level `prompt:`
 - human-readable `maxBytes` normalization
 - automatic parent directory creation for file handlers
-- pytest coverage in `tests/test_tunned_logger.py`
+- pytest coverage in `tests/test_tuned_logger.py`
 - Ruff linting and formatting configuration
 - mypy type checking configuration
 - pre-commit hook configuration
@@ -62,45 +62,50 @@ Implemented:
 - user-facing config reference in `README.md`
 
 There is no package CLI entrypoint by design. The example script has its own
-demo parser, but `tunning` remains a logging library. Message body styling is
+demo parser, but `tuning` remains a logging library. Message body styling is
 implemented as current behavior: each level's `style` always applies to the full
 console message text.
 
 ## Architecture
 
-Implementation lives in `tunning/logger.py`.
+Logging implementation lives in `tuning/logger.py`. Banner rendering lives in
+`tuning/_banners.py`.
 
 Public classes:
-- `TunnedLogger`: a `logging.Logger` subclass with `from_yaml(...)` and
+- `TunedLogger`: a `logging.Logger` subclass with `from_yaml(...)` and
   `prompt(...)`
-- `TunnedHandler`: a `rich.logging.RichHandler` subclass that renders level
+- `TunedHandler`: a `rich.logging.RichHandler` subclass that renders level
   prefixes from configured symbols or icons
 
 Public functions:
-- `getLogger(...)`: create or return a named `TunnedLogger`
+- `getLogger(...)`: create or return a named `TunedLogger`
 - `basicConfig(...)`: configure the real process root logger programmatically
 - `basicConfigFromYaml(...)`: configure the real process root logger from YAML
+- `banner(...)`: print a styled app banner from a project `banners.txt` file
 - `export(...)`: write the packaged default YAML config to a project file
 
 Package files:
-- `tunning/__init__.py`: public exports
-- `tunning/logger.py`: implementation
-- `tunning/conf.yml`: packaged default config
+- `tuning/__init__.py`: public exports
+- `tuning/logger.py`: implementation
+- `tuning/_banners.py`: banner file discovery, parsing, selection, and rendering
+- `tuning/conf.yml`: packaged default config
 - `docs/`: generated API reference and guide pages
 - `mkdocs.yml`: documentation site configuration
 
 Examples:
 - `examples/usage.py`: prototype usage example with selectable config modes
+- `examples/banners.txt`: sample app banner file for the usage example
 - `examples/conf.yml`: full config example
 - `examples/custom_logger.yml`: sample partial override
 
-Test file:
-- `tests/test_tunned_logger.py`
+Test files:
+- `tests/test_banners.py`
+- `tests/test_tuned_logger.py`
 
 ## Configuration Model
 
 `basicConfigFromYaml(config_path, force=...)` and
-`TunnedLogger.from_yaml(config_path, name=..., force=...)` load packaged defaults
+`TunedLogger.from_yaml(config_path, name=..., force=...)` load packaged defaults
 first, then deep-merge the provided YAML override on top.
 
 Top-level `levels:` defines log level metadata:
@@ -119,7 +124,7 @@ and the full message text. There is no `message_color` opt-out. Prompt styles
 apply only to the rendered prompt prefix and question text, not the trailing
 input spacer or the user's answer. Time/path columns and file handlers are not
 styled by level metadata.
-When `boxes` is enabled on `TunnedHandler`, each console log record is rendered
+When `boxes` is enabled on `TunedHandler`, each console log record is rendered
 in its own Rich panel. The panel border, title, padding, and fill use the level
 style. Time and path columns stay outside the panel and remain structural.
 Tracebacks render inside the same panel as the message. Consecutive records are
@@ -129,28 +134,28 @@ fallback labels expand naturally.
 
 Logging config uses stdlib `logging.config.dictConfig` shape after normalization.
 `basicConfigFromYaml(...)` preserves `root:` as the actual process root logger.
-When called without a path, it loads only the packaged `tunning/conf.yml`.
-`export(...)` writes the packaged `tunning/conf.yml` text as a full standalone
+When called without a path, it loads only the packaged `tuning/conf.yml`.
+`export(...)` writes the packaged `tuning/conf.yml` text as a full standalone
 YAML file. It intentionally does not reconstruct live runtime logger state,
 because stdlib logging handlers are not reliably serializable back to config.
-`TunnedLogger.from_yaml(...)` configures only the requested named logger. In that
+`TunedLogger.from_yaml(...)` configures only the requested named logger. In that
 named mode, if a config only defines `root:`, that section is used as the
 template for the requested named logger and does not configure the actual process
 root logger.
 
 `basicConfig(...)` follows stdlib behavior: it configures the root logger only if
 the root has no handlers, unless `force=True` is passed. Its default level is
-`WARNING`. Without `filename`, it installs a console `TunnedHandler`; with
+`WARNING`. Without `filename`, it installs a console `TunedHandler`; with
 `filename`, it installs a detailed file handler only. Passing `console=True` with
 `filename` installs both file and console handlers. Programmatic file rotation is
 enabled by passing `max_bytes` or `backup_count`; if only one is provided, the
 other uses `DEFAULT_MAX_BYTES` or `DEFAULT_BACKUP_COUNT` with a warning. Rotation
 options are ignored when `filename` is omitted. Console-only options are
-`show_icon`, `show_path`, `show_time`, `boxes`, `rich_tracebacks`, and `markup`;
-they do not affect file handlers.
+`show_icon`, `show_level`, `show_path`, `show_time`, `boxes`, `rich_tracebacks`,
+and `markup`; they do not affect file handlers.
 
-If a `TunnedLogger` is used before explicit configuration, `tunning` lazily
-installs packaged level metadata and a console-only root `TunnedHandler` at INFO
+If a `TunedLogger` is used before explicit configuration, `tuning` lazily
+installs packaged level metadata and a console-only root `TunedHandler` at INFO
 level. It does not replace root handlers that already exist.
 
 ## Logging Rules
@@ -167,6 +172,9 @@ Use `WARNING`, not `WARN`. Use `CRITICAL`, not `FATAL`.
 Custom levels are process-global because stdlib logging level registration is
 process-global. Reconfiguring handlers with `force=True` is allowed for the same
 named logger, but conflicting custom level redefinitions are rejected.
+`addLevel(...)` registers runtime-only custom levels through the same global
+registry and installs the matching dynamic `TunedLogger` method. It does not
+mutate YAML files or exported configuration.
 
 ## Roadmap
 
@@ -185,7 +193,7 @@ The first stabilization pass added tests for:
 - invalid `show_icon` usage on non-rich handlers
 - invalid human-readable `maxBytes` values
 - explicit `loggers:` configuration for the requested logger
-- fallback prompt behavior when no `TunnedHandler` exists
+- fallback prompt behavior when no `TunedHandler` exists
 - dynamic method name conversion, for example `MY-CUSTOM-LEVEL` to
   `my_custom_level()`
 
@@ -197,7 +205,7 @@ The previous `src/helper.py` scratch script has been consolidated into
 `examples/usage.py`.
 
 The old `src/` implementation layout has been replaced by the root package
-directory `tunning/`.
+directory `tuning/`.
 
 ### 3. Improve Documentation
 
@@ -220,10 +228,10 @@ The README now includes a config reference covering:
 Status: complete for the current prototype.
 
 Implemented packaging work:
-- distribution name is `tunning`
-- import package is `tunning`
-- public logger class is `TunnedLogger`
-- public handler class is `TunnedHandler`
+- distribution name is `tuning`
+- import package is `tuning`
+- public logger class is `TunedLogger`
+- public handler class is `TunedHandler`
 - base runtime dependencies are limited to logging/config support
 - optional extras provide `cli` (`typer`) and `tui` (`textual`) dependencies
 - `requirements.txt` is the full developer dependency set
@@ -288,7 +296,91 @@ Rules:
 
 ## TODOs
 
-- Fix docs. The links are broken in the web docs
-- Review readme and related conf.
-- Design a banner/icon for the library.
-- Add pictures to the readme/conf
+- [X] Console handler allows disabling symbol/icon/lvl_name completely with `basicConfig(show_level=False)`, matching YAML `show_level` behavior.
+- [X] Add new API function to add your own levels during run-time: `tuning.addLevel()`
+- [X] Review readme and related conf. Remove development and "internal" comments from there.
+- [X] Design a banner/icon for the library.
+  - [X] Basic banner in place
+  - [X] Improve banner, make it more "tuned".
+- [ ] Icon design
+  - [ ] Remove background
+  - [ ] Change marker letters from `graffiti` to `log` (or remove the letters from both markers)
+  - [ ] Design a `favicon`, rounded (or no background at all), simple. Maybe a `T` drawn with marker, with the marker being the pole of the `T`
+- [ ] When all the previous are done, upgrade version to 1.0 and publish
+- Version 1.1: 
+  - [ ] Plan migratin plan to leave MkDocs (version 2.0 will break a lot of things, so I do not want to update, but that means that current version won't get updates any more, so I need to migrate). Possible candidates:
+    - Docosaurus (versioned products/docs)
+    - VitePress (Vue ecosystem)
+    - Astro starlight (minimal JS)
+    - Sphinx (+ MyST Markdown): nice for Python library/API docs
+    - mdBook (for Rust projects)
+    - Zola (light-weight, may lack some features)
+  - [ ] Add pictures to the readme/conf
+  - [ ] Add [`rich-gradient`](https://github.com/maxludden/rich-gradient) support. Maybe only as optional dependency, Im not sure if any wrapper is necessary.
+  - [ ] In panel, allow to control:
+    - [ ] background style
+    - [ ] Optional, not shown by default: show version in the banner (from toml)
+    - [ ] Optional, not shown by default: show author in the banner (from toml)
+    - [ ] Optional, not shown by default: show foot note in the banner (from toml, might require creating a custom key)
+    - [ ] Allow to pass param `box` to `tuning.banner()` to control the box style of the panel. 
+      - If `box` is None: do not pass param to `Panel` (that would cause an `AttributeError`). Just omit it.
+      - If `box` is provided: validate it (should be one of the styles defined in `rich.box` or the custom box style `MEGA_BOLD`), then pass it to `Panel` like `Panel(box=BOX_STYLE, ...)`
+
+---
+
+Blocky
+- ansi shadow
+- Blur vision asci
+- shaded blocky
+- pagga
+- Delta Corps Priest 1
+
+Art
+- bloody
+- ghost
+- whimsy
+- stronger than all
+- the edge
+- merlin1
+- Patorjk\'s Cheese
+- caligraphy
+- Fire font K
+- fun face
+
+
+- El banner puede ser, lineas de log con los diferentes estilos, haciendo una T 
+
+```python
+"""
+ oooooooooooooooo      DEBUG
+ oooooooooooooooo      TRACE
+       oooo         INFO
+       oooo         SUCCESS
+       oooo         WANRING
+       oooo         ERROR
+       oooo         FATAL
+"""
+
+def coloricon():
+    import rich
+    console = rich.get_console()
+
+    console.print(" " * 16, style="reverse dim magenta")
+    console.print(" " * 16, style="reverse magenta")
+    console.print("      [reverse cyan]    [/reverse cyan]      ")
+    console.print("      [reverse green]    [/reverse green]      ")
+    console.print("      [reverse yellow]    [/reverse yellow]      ")
+    console.print("      [reverse red]    [/reverse red]      ")
+    console.print("      [reverse white]    [/reverse white]      ")
+```
+O en lugar de en horizontal, hacer franjas verticales
+O al reves, pintar las lineas enteras, y dejar huecos para que se lea `tunning`
+
+  - Lo mismo pero en vez de al principio, al final
+  - O hacerlo con las caidas de las letras tunning, extendiendo la t y la n hacia abajo con los distintos colores.
+  - Tambien puedo usar fuentes asciiart directamente y colorearlas
+
+
+A simple 2D cartoon sketch of a dull, gray, old logbook open on a plain white background. Across the open pages, the word "TUNING" is written in a vibrant, neon, underground street graffiti style using thick markers. The graffiti is highly colorful, has a slight drip effect, and curves naturally to follow the bend of the flat cartoon pages. The overall style is entirely hand-drawn and non-realistic, creating a stark contrast between the boring, plain sketch of the old book and the popping neon graffiti. A couple of thick, colorful graffiti markers are lying next to the book on the blank background.
+
+

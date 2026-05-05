@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import keyword
 import logging
+import re
 from typing import Any
 
 from rich.style import Style
 
-from tunning._models import LevelSpec
+from tuning._models import LevelSpec
 
 _BUILTIN_LEVELS = {
     "NOTSET": logging.NOTSET,
@@ -22,6 +24,7 @@ _ALIASED_LEVEL_NAMES = {
 _LEVEL_SPECS_BY_NAME: dict[str, LevelSpec] = {}
 _LEVEL_SPECS_BY_CODE: dict[int, LevelSpec] = {}
 _DYNAMIC_METHODS: dict[str, int] = {}
+_RUNTIME_LEVEL_NAME_PATTERN = re.compile(r"^[A-Z][A-Z0-9_-]*$")
 
 
 def get_level_spec(level_name: str) -> LevelSpec | None:
@@ -74,9 +77,71 @@ def parse_level_specs(levels_config: dict[str, Any]) -> list[LevelSpec]:
     return specs
 
 
+def parse_runtime_level_spec(
+    *,
+    num: int,
+    name: str,
+    symbol: str | None,
+    icon: str | None,
+    style: str | None,
+) -> LevelSpec:
+    if isinstance(num, bool) or not isinstance(num, int):
+        raise ValueError("num must be an integer")
+
+    if not isinstance(name, str) or not name.strip():
+        raise ValueError("name must be a non-empty string")
+
+    normalized_name = _normalize_level_name(name)
+    if normalized_name == "INPUT":
+        raise ValueError("Use prompts instead of registering an INPUT level")
+
+    if normalized_name in _ALIASED_LEVEL_NAMES:
+        canonical_name = _ALIASED_LEVEL_NAMES[normalized_name]
+        raise ValueError(f"Use {canonical_name} instead of {normalized_name}")
+
+    if normalized_name in _BUILTIN_LEVELS:
+        raise ValueError(f"Cannot add built-in level {normalized_name}")
+
+    if not _RUNTIME_LEVEL_NAME_PATTERN.fullmatch(normalized_name):
+        raise ValueError(
+            "name must start with a letter and contain only letters, numbers, '_' or '-'"
+        )
+
+    method_name = _normalize_method_name(normalized_name)
+    if not method_name.isidentifier() or keyword.iskeyword(method_name):
+        raise ValueError("name must create a valid Python method name")
+
+    if icon is not None and not isinstance(icon, str):
+        raise ValueError("icon must be a string when provided")
+
+    return LevelSpec(
+        name=normalized_name,
+        code=num,
+        symbol=validate_symbol(symbol, field_name="symbol"),
+        icon=icon,
+        style=validate_style(style, field_name="style"),
+    )
+
+
 def register_level_specs(specs: list[LevelSpec]) -> None:
     for spec in specs:
         _register_level_spec(spec)
+
+
+def validate_level_specs(specs: list[LevelSpec]) -> None:
+    for spec in specs:
+        _validate_level_spec(spec)
+
+
+def validate_dynamic_level_methods(
+    logger_cls: type[logging.Logger], specs: list[LevelSpec]
+) -> None:
+    for spec in specs:
+        if spec.name in _BUILTIN_LEVELS:
+            continue
+
+        method_name = _normalize_method_name(spec.name)
+        _validate_dynamic_level_method(logger_cls, method_name, spec.code)
 
 
 def install_dynamic_level_methods(logger_cls: type[logging.Logger], specs: list[LevelSpec]) -> None:
@@ -85,16 +150,8 @@ def install_dynamic_level_methods(logger_cls: type[logging.Logger], specs: list[
             continue
 
         method_name = _normalize_method_name(spec.name)
-        existing_level = _DYNAMIC_METHODS.get(method_name)
-        if existing_level is not None:
-            if existing_level != spec.code:
-                raise ValueError(
-                    f"Method {method_name} is already bound to level {existing_level}, not {spec.code}"
-                )
+        if _validate_dynamic_level_method(logger_cls, method_name, spec.code):
             continue
-
-        if hasattr(logger_cls, method_name):
-            raise ValueError(f"Cannot create dynamic method {method_name}: name already exists")
 
         setattr(logger_cls, method_name, _make_level_method(spec.code, spec.name, method_name))
         _DYNAMIC_METHODS[method_name] = spec.code
@@ -146,6 +203,16 @@ def _coerce_level_code(level_name: str, code: Any) -> int:
 
 
 def _register_level_spec(spec: LevelSpec) -> None:
+    _validate_level_spec(spec)
+
+    if spec.name not in _BUILTIN_LEVELS:
+        logging.addLevelName(spec.code, spec.name)
+
+    _LEVEL_SPECS_BY_NAME[spec.name] = spec
+    _LEVEL_SPECS_BY_CODE[spec.code] = spec
+
+
+def _validate_level_spec(spec: LevelSpec) -> None:
     existing_by_name = _LEVEL_SPECS_BY_NAME.get(spec.name)
     if existing_by_name and existing_by_name != spec:
         raise ValueError(f"Level {spec.name} is already registered with a different definition")
@@ -170,11 +237,22 @@ def _register_level_spec(spec: LevelSpec) -> None:
     ):
         raise ValueError(f"Level code {spec.code} is already reserved for {known_name}")
 
-    if spec.name not in _BUILTIN_LEVELS:
-        logging.addLevelName(spec.code, spec.name)
 
-    _LEVEL_SPECS_BY_NAME[spec.name] = spec
-    _LEVEL_SPECS_BY_CODE[spec.code] = spec
+def _validate_dynamic_level_method(
+    logger_cls: type[logging.Logger], method_name: str, level_code: int
+) -> bool:
+    existing_level = _DYNAMIC_METHODS.get(method_name)
+    if existing_level is not None:
+        if existing_level != level_code:
+            raise ValueError(
+                f"Method {method_name} is already bound to level {existing_level}, not {level_code}"
+            )
+        return True
+
+    if hasattr(logger_cls, method_name):
+        raise ValueError(f"Cannot create dynamic method {method_name}: name already exists")
+
+    return False
 
 
 def _make_level_method(level_code: int, level_name: str, method_name: str):
@@ -184,6 +262,6 @@ def _make_level_method(level_code: int, level_name: str, method_name: str):
             self._log(level_code, msg, args, **kwargs)
 
     log_for_level.__name__ = method_name
-    log_for_level.__qualname__ = f"TunnedLogger.{method_name}"
+    log_for_level.__qualname__ = f"TunedLogger.{method_name}"
     log_for_level.__doc__ = f"Log a message with the {level_name} level."
     return log_for_level

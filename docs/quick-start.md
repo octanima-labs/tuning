@@ -3,15 +3,15 @@
 Install the package:
 
 ```bash
-pip install tunning
+pip install tuning
 ```
 
 Create a logger and write messages:
 
 ```python
-import tunning
+import tuning
 
-logger = tunning.getLogger(__name__)
+logger = tuning.getLogger(__name__)
 
 logger.info("application started")
 logger.success("everything looks good")
@@ -22,21 +22,33 @@ lazily. Configure the root logger explicitly when you want predictable startup
 behavior:
 
 ```python
-import tunning
+import tuning
 
-tunning.basicConfig(level="INFO", show_time=True, datefmt=tunning.ISO_FORMAT)
+tuning.basicConfig(level="INFO", show_time=True, datefmt=tuning.ISO_FORMAT)
 
-logger = tunning.getLogger(__name__)
+logger = tuning.getLogger(__name__)
 logger.info("configured output")
 ```
 
 Export a full starter YAML config:
 
 ```python
-import tunning
+import tuning
 
-config_path = tunning.export()
+config_path = tuning.export()
 ```
 
-With no path, `export()` writes `tunning.yml` next to the Python file that
+With no path, `export()` writes `tuning.yml` next to the Python file that
 called it.
+
+Print an app banner from a nearby `banners.txt` file:
+
+```python
+import tuning
+
+tuning.banner()
+```
+
+When styles are omitted, `banner()` picks random bold colors for the text and
+border. Pass Rich style strings, `padding=...`, or `border=False` to customize
+the rendering.

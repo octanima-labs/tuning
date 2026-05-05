@@ -3,15 +3,15 @@
 Clone the repository and install development dependencies:
 
 ```bash
-git clone https://github.com/octanima-labs/tunning
-cd tunning
+git clone https://github.com/octanima-labs/tuning
+cd tuning
 pip install -e ".[dev,cli,tui,docs]"
 ```
 
 Use the repo-local interpreter when working in this checkout:
 
 ```bash
-./.venv/bin/python -c "import tunning"
+./.venv/bin/python -c "import tuning"
 ```
 
 ## Smoke Tests
@@ -19,13 +19,13 @@ Use the repo-local interpreter when working in this checkout:
 Cheapest import smoke test:
 
 ```bash
-./.venv/bin/python -c "import tunning"
+./.venv/bin/python -c "import tuning"
 ```
 
 Config smoke test:
 
 ```bash
-./.venv/bin/python -c "import tunning; tunning.basicConfigFromYaml('examples/custom_logger.yml', force=True)"
+./.venv/bin/python -c "import tuning; tuning.basicConfigFromYaml('examples/custom_logger.yml', force=True)"
 ```
 
 Run the usage example with programmatic config:
@@ -59,7 +59,7 @@ Run the test suite:
 Run one focused test:
 
 ```bash
-./.venv/bin/python -m pytest tests/test_tunned_logger.py -k prompt
+./.venv/bin/python -m pytest tests/test_tuned_logger.py -k prompt
 ```
 
 Run formatting, linting, and type checks:
@@ -67,7 +67,7 @@ Run formatting, linting, and type checks:
 ```bash
 ./.venv/bin/ruff format --check .
 ./.venv/bin/ruff check .
-./.venv/bin/mypy tunning tests
+./.venv/bin/mypy tuning tests
 ```
 
 Build documentation:
@@ -82,10 +82,3 @@ Run pre-commit hooks:
 ./.venv/bin/pre-commit install
 ./.venv/bin/pre-commit run --all-files
 ```
-
-## Documentation
-
-Public API docs are generated from source docstrings with MkDocs and
-mkdocstrings. Keep public docstrings current when changing public APIs.
-
-The generated site output is written to `site/`, which is ignored by git.

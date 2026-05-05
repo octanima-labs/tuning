@@ -1,7 +1,7 @@
-site_name: tunning
+site_name: tuning
 site_description: A YAML-driven Rich/stdlib logging helper for CLI applications.
-site_url: https://octanima-labs.github.io/tunning/
-repo_url: https://github.com/octanima-labs/tunning
+site_url: https://octanima-labs.github.io/tuning/
+repo_url: https://github.com/octanima-labs/tuning
 
 theme:
   name: material

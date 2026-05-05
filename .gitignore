@@ -1,8 +1,7 @@
 .venv/
-.pytest_cache/
+.*_cache/
 .logs/
 __pycache__/
 *.egg-info/
 *.py[cod]
-.ruff_cache/
 site/

@@ -1,11 +1,13 @@
-from tunning.logger import (
+from tuning._banners import banner
+from tuning.logger import (
     DEFAULT_BACKUP_COUNT,
     DEFAULT_MAX_BYTES,
     ISO_FORMAT,
     LevelSpec,
     PromptSpec,
-    TunnedHandler,
-    TunnedLogger,
+    TunedHandler,
+    TunedLogger,
+    addLevel,
     basicConfig,
     basicConfigFromYaml,
     export,
@@ -13,15 +15,17 @@ from tunning.logger import (
 )
 
 __all__ = [
-    "TunnedLogger",
-    "TunnedHandler",
+    "TunedLogger",
+    "TunedHandler",
     "LevelSpec",
     "PromptSpec",
     "ISO_FORMAT",
     "DEFAULT_MAX_BYTES",
     "DEFAULT_BACKUP_COUNT",
     "getLogger",
+    "banner",
     "export",
+    "addLevel",
     "basicConfig",
     "basicConfigFromYaml",
 ]

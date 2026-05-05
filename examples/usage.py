@@ -5,10 +5,10 @@ from time import sleep
 
 from aux import MyClass, my_function
 
-import tunning
+import tuning
 
 ROOT_DIR = Path(__file__).parents[1]
-logger = tunning.getLogger("demo")
+logger = tuning.getLogger("demo")
 
 
 def basic_config(
@@ -18,22 +18,22 @@ def basic_config(
     boxes: bool = False,
 ) -> None:
     # Configure the process root logger programmatically, like logging.basicConfig().
-    tunning.basicConfig(
+    tuning.basicConfig(
         level="TRACE",
         filename=".logs/usage.log",
         console=True,
         show_icon=show_icon,
         show_path=show_path,
         show_time=show_time,
-        datefmt=tunning.ISO_FORMAT,
+        datefmt=tuning.ISO_FORMAT,
         boxes=boxes,
         force=True,
     )
 
 
 def pro_config() -> None:
-    # Load packaged defaults from tunning/conf.yml, then merge this override file.
-    tunning.basicConfigFromYaml("examples/custom_logger.yml", force=True)
+    # Load packaged defaults from tuning/conf.yml, then merge this override file.
+    tuning.basicConfigFromYaml("examples/custom_logger.yml", force=True)
 
 
 def zero_config() -> None:
@@ -99,7 +99,7 @@ def main(mode: str) -> None:
 def _cli() -> ArgumentParser:
     parser = ArgumentParser(
         prog=Path(__file__).name,
-        description="Shows some examples of how to use tunning",
+        description="Shows some examples of how to use tuning",
     )
     parser.set_defaults(
         command="basic",
@@ -166,13 +166,8 @@ def _cli() -> ArgumentParser:
     return parser
 
 
-def _print_banner() -> None:
-    # TODO: design a banner (ascii friendly)
-    pass
-
-
 if __name__ == "__main__":
-    _print_banner()
+    tuning.banner()
     args: Namespace = _cli().parse_args()
     command = args.command or "basic"
     print(f"You can still print normally to the terminal (configuration mode: {command})")

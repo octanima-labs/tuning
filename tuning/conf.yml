@@ -49,7 +49,7 @@ formatters:
 
 handlers:
   console:
-    '()': 'tunning.TunnedHandler'
+    '()': 'tuning.TunedHandler'
     level: TRACE
     log_time_format: "[%Y-%m-%d %H:%M:%S]"
     show_time: false

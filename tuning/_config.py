@@ -9,9 +9,9 @@ from typing import Any
 import bitmath
 import yaml
 
-from tunning._levels import parse_level_specs
-from tunning._models import LevelSpec, PromptSpec
-from tunning._prompt import parse_prompt_spec
+from tuning._levels import parse_level_specs
+from tuning._models import LevelSpec, PromptSpec
+from tuning._prompt import parse_prompt_spec
 
 _DEFAULT_CONFIG_PATH = Path(__file__).resolve().parent / "conf.yml"
 
@@ -25,12 +25,12 @@ class ResolvedConfig:
 
 
 @dataclass(frozen=True)
-class TunningMetadata:
+class TuningMetadata:
     level_specs: list[LevelSpec]
     prompt_spec: PromptSpec
 
 
-def load_tunning_config(
+def load_tuning_config(
     config_path: str | Path,
     *,
     logger_name: str,
@@ -53,7 +53,7 @@ def load_tunning_config(
     )
 
 
-def load_tunning_root_config(
+def load_tuning_root_config(
     config_path: str | Path | None = None,
     *,
     defaults_path: str | Path | None = None,
@@ -78,9 +78,9 @@ def load_tunning_root_config(
     )
 
 
-def load_tunning_metadata(*, defaults_path: str | Path | None = None) -> TunningMetadata:
+def load_tuning_metadata(*, defaults_path: str | Path | None = None) -> TuningMetadata:
     config = _load_yaml(defaults_path or _DEFAULT_CONFIG_PATH)
-    return TunningMetadata(
+    return TuningMetadata(
         level_specs=parse_level_specs(config.get("levels", {})),
         prompt_spec=parse_prompt_spec(config.get("prompt", {})),
     )
@@ -174,17 +174,17 @@ def _normalize_common_logging_config(normalized: dict[str, Any]) -> None:
 
 
 def _normalize_handler_config(handler_name: str, handler_config: dict[str, Any]) -> None:
-    for tunning_option in ("show_icon", "boxes"):
-        if tunning_option not in handler_config:
+    for tuning_option in ("show_icon", "boxes"):
+        if tuning_option not in handler_config:
             continue
 
         if not _is_custom_rich_handler(handler_config):
             raise ValueError(
-                f"Handler {handler_name} uses {tunning_option} but is not a TunnedHandler"
+                f"Handler {handler_name} uses {tuning_option} but is not a TunedHandler"
             )
 
-        if not isinstance(handler_config[tunning_option], bool):
-            raise ValueError(f"handlers.{handler_name}.{tunning_option} must be a boolean")
+        if not isinstance(handler_config[tuning_option], bool):
+            raise ValueError(f"handlers.{handler_name}.{tuning_option} must be a boolean")
 
     if "maxBytes" in handler_config and isinstance(handler_config["maxBytes"], str):
         handler_config["maxBytes"] = parse_size_to_bytes(
@@ -200,13 +200,13 @@ def _is_custom_rich_handler(handler_config: dict[str, Any]) -> bool:
     factory = handler_config.get("()") or handler_config.get("class")
     if isinstance(factory, str):
         return factory in {
-            "tunning.logger.TunnedHandler",
-            "tunning.TunnedHandler",
+            "tuning.logger.TunedHandler",
+            "tuning.TunedHandler",
         }
 
     return (
-        getattr(factory, "__module__", None) == "tunning.logger"
-        and getattr(factory, "__qualname__", None) == "TunnedHandler"
+        getattr(factory, "__module__", None) == "tuning.logger"
+        and getattr(factory, "__qualname__", None) == "TunedHandler"
     )
 
 

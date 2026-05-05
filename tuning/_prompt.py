@@ -4,8 +4,8 @@ from typing import Any
 
 from rich.text import Text
 
-from tunning._levels import validate_style, validate_symbol
-from tunning._models import PromptSpec
+from tuning._levels import validate_style, validate_symbol
+from tuning._models import PromptSpec
 
 
 def parse_prompt_spec(prompt_config: dict[str, Any]) -> PromptSpec:

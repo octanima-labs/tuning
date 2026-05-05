@@ -2,18 +2,20 @@
 
 This page is generated from public source docstrings.
 
-::: tunning
+::: tuning
     options:
       members:
         - ISO_FORMAT
         - DEFAULT_MAX_BYTES
         - DEFAULT_BACKUP_COUNT
         - getLogger
+        - addLevel
         - basicConfig
         - basicConfigFromYaml
+        - banner
         - export
-        - TunnedLogger
-        - TunnedHandler
+        - TunedLogger
+        - TunedHandler
         - LevelSpec
         - PromptSpec
       show_root_heading: false

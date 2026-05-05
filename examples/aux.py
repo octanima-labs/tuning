@@ -1,8 +1,8 @@
 from time import sleep
 
-import tunning
+import tuning
 
-logger = tunning.getLogger(__name__)
+logger = tuning.getLogger(__name__)
 
 
 def my_function() -> None:
@@ -12,7 +12,7 @@ def my_function() -> None:
 
 class MyClass:
     def __init__(self) -> None:
-        self.logger = tunning.getLogger(__name__)
+        self.logger = tuning.getLogger(__name__)
 
     def action(self, action: str) -> None:
         self.logger.critical(f"This is a CRITICAL step: removing generated log files ({action})")

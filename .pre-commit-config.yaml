@@ -21,6 +21,6 @@ repos:
         pass_filenames: false
       - id: mypy
         name: mypy
-        entry: ./.venv/bin/mypy tunning tests
+        entry: ./.venv/bin/mypy tuning tests
         language: system
         pass_filenames: false

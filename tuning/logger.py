@@ -1,4 +1,4 @@
-"""Public logging APIs for tunning."""
+"""Public logging APIs for tuning."""
 
 from __future__ import annotations
 
@@ -16,16 +16,23 @@ from rich.console import Console
 from rich.logging import RichHandler
 from rich.text import Text
 
-from tunning._config import (
+from tuning._config import (
     export_default_config,
-    load_tunning_config,
-    load_tunning_metadata,
-    load_tunning_root_config,
+    load_tuning_config,
+    load_tuning_metadata,
+    load_tuning_root_config,
     parse_size_to_bytes,
 )
-from tunning._levels import get_level_spec, install_dynamic_level_methods, register_level_specs
-from tunning._models import LevelSpec, PromptSpec
-from tunning._prompt import render_prompt_text
+from tuning._levels import (
+    get_level_spec,
+    install_dynamic_level_methods,
+    parse_runtime_level_spec,
+    register_level_specs,
+    validate_dynamic_level_methods,
+    validate_level_specs,
+)
+from tuning._models import LevelSpec, PromptSpec
+from tuning._prompt import render_prompt_text
 
 ISO_FORMAT = "[%Y-%m-%d %H:%M:%S]"
 """ISO-like console timestamp format for `basicConfig(datefmt=...)`."""
@@ -43,10 +50,10 @@ _DEFAULT_METADATA_INSTALLED = False
 _ZERO_CONFIGURING = False
 
 
-class TunnedHandler(RichHandler):
-    """Rich console handler that renders tunning level metadata.
+class TunedHandler(RichHandler):
+    """Rich console handler that renders tuning level metadata.
 
-    `TunnedHandler` extends Rich's `RichHandler` with symbol/icon level
+    `TunedHandler` extends Rich's `RichHandler` with symbol/icon level
     prefixes, full-message level styling, and optional per-record boxes.
     It is normally created through `basicConfig()` or YAML configuration rather
     than instantiated directly.
@@ -192,17 +199,17 @@ class TunnedHandler(RichHandler):
         return path_text
 
 
-class TunnedLogger(logging.Logger):
+class TunedLogger(logging.Logger):
     """Logger subclass with YAML configuration and styled prompts.
 
-    `TunnedLogger` behaves like a normal stdlib logger while adding
+    `TunedLogger` behaves like a normal stdlib logger while adding
     `from_yaml()` for named logger configuration and `prompt()` for styled
     interactive input.
     """
 
     def __init__(self, name: str, level: int = logging.NOTSET) -> None:
         super().__init__(name, level)
-        self._tunning_signature: str | None = None
+        self._tuning_signature: str | None = None
         self._prompt_spec: PromptSpec | None = None
 
     def isEnabledFor(self, level: int) -> bool:
@@ -217,10 +224,10 @@ class TunnedLogger(logging.Logger):
         name: str = "app",
         defaults_path: str | Path | None = None,
         force: bool = False,
-    ) -> TunnedLogger:
-        """Configure and return one named `TunnedLogger` from YAML.
+    ) -> TunedLogger:
+        """Configure and return one named `TunedLogger` from YAML.
 
-        The packaged `tunning/conf.yml` defaults are loaded first, then
+        The packaged `tuning/conf.yml` defaults are loaded first, then
         `config_path` is deep-merged on top. This method configures only the
         requested named logger. If the YAML defines only `root`, that section is
         used as the template for the named logger and does not configure the
@@ -234,35 +241,35 @@ class TunnedLogger(logging.Logger):
             force: Replace existing managed handlers for the same logger.
 
         Returns:
-            The configured `TunnedLogger`.
+            The configured `TunedLogger`.
 
         Raises:
             ValueError: If the logger name is invalid, the logger already exists
-                as a non-`TunnedLogger`, or an existing configuration would be
+                as a non-`TunedLogger`, or an existing configuration would be
                 replaced without `force=True`.
         """
         if not isinstance(name, str) or not name.strip():
             raise ValueError("Logger name must be a non-empty string")
 
-        resolved_config = load_tunning_config(
+        resolved_config = load_tuning_config(
             config_path,
             logger_name=name,
             defaults_path=defaults_path,
         )
-        logger = _get_or_create_tunned_logger(name)
+        logger = _get_or_create_tuned_logger(name)
 
-        existing_signature = logger._tunning_signature
+        existing_signature = logger._tuning_signature
         if existing_signature == resolved_config.signature and not force:
             return logger
 
         if existing_signature and existing_signature != resolved_config.signature and not force:
             raise ValueError(
-                f"TunnedLogger {name!r} is already configured with a different config; use force=True"
+                f"TunedLogger {name!r} is already configured with a different config; use force=True"
             )
 
         if existing_signature is None and logger.handlers and not force:
             raise ValueError(
-                f"TunnedLogger {name!r} already has handlers but is not managed by from_yaml; use force=True"
+                f"TunedLogger {name!r} already has handlers but is not managed by from_yaml; use force=True"
             )
 
         register_level_specs(resolved_config.level_specs)
@@ -273,10 +280,10 @@ class TunnedLogger(logging.Logger):
 
         logging.config.dictConfig(resolved_config.logging_config)
         configured_logger = logging.getLogger(name)
-        if not isinstance(configured_logger, TunnedLogger):
-            raise ValueError(f"Configured logger {name!r} is not a TunnedLogger")
+        if not isinstance(configured_logger, TunedLogger):
+            raise ValueError(f"Configured logger {name!r} is not a TunedLogger")
 
-        configured_logger._tunning_signature = resolved_config.signature
+        configured_logger._tuning_signature = resolved_config.signature
         configured_logger._prompt_spec = resolved_config.prompt_spec
         return configured_logger
 
@@ -293,7 +300,7 @@ class TunnedLogger(logging.Logger):
             message: Prompt question to display.
             password: Hide input while typing.
             markup: Whether Rich markup in the prompt message is enabled. If
-                omitted, the first inherited `TunnedHandler` setting is used.
+                omitted, the first inherited `TunedHandler` setting is used.
 
         Returns:
             The user's typed input.
@@ -322,7 +329,7 @@ class TunnedLogger(logging.Logger):
 
 
 @overload
-def getLogger(name: str) -> TunnedLogger: ...
+def getLogger(name: str) -> TunedLogger: ...
 
 
 @overload
@@ -330,18 +337,18 @@ def getLogger(name: None = None) -> logging.Logger: ...
 
 
 def getLogger(name: str | None = None) -> logging.Logger:
-    """Return a logger using tunning's logger class for named loggers.
+    """Return a logger using tuning's logger class for named loggers.
 
     Args:
         name: Logger name. If omitted, returns the process root logger.
 
     Returns:
-        A `TunnedLogger` for named loggers, or the stdlib root logger when
+        A `TunedLogger` for named loggers, or the stdlib root logger when
         `name` is omitted.
 
     Raises:
         ValueError: If `name` is empty or an existing logger with that name is
-            not a `TunnedLogger`.
+            not a `TunedLogger`.
     """
     _install_default_metadata()
 
@@ -351,18 +358,18 @@ def getLogger(name: str | None = None) -> logging.Logger:
     if not isinstance(name, str) or not name.strip():
         raise ValueError("Logger name must be a non-empty string")
 
-    return _get_or_create_tunned_logger(name)
+    return _get_or_create_tuned_logger(name)
 
 
 def export(path: str | Path | None = None, *, force: bool = False) -> Path:
     """Export the packaged default configuration to a YAML file.
 
-    The exported file is copied from packaged `tunning/conf.yml`; it does not
+    The exported file is copied from packaged `tuning/conf.yml`; it does not
     reconstruct the current runtime logging state.
 
     Args:
         path: Destination file path or existing directory. If omitted, writes
-            `tunning.yml` next to the calling Python file.
+            `tuning.yml` next to the calling Python file.
         force: Overwrite an existing target file.
 
     Returns:
@@ -376,13 +383,54 @@ def export(path: str | Path | None = None, *, force: bool = False) -> Path:
     return export_default_config(_resolve_export_path(path), force=force)
 
 
+def addLevel(
+    num: int,
+    name: str,
+    symbol: str | None = None,
+    icon: str | None = None,
+    style: str | None = None,
+) -> None:
+    """Register a runtime-only custom log level and logger method.
+
+    The level is added to stdlib logging for the current Python process and a
+    matching method is installed on `TunedLogger`. For example,
+    `addLevel(7, "MY_CUSTOM_LEVEL")` creates `logger.my_custom_level(...)` for
+    existing and future tuning loggers. This does not update YAML files or
+    exported configuration.
+
+    Args:
+        num: Numeric logging level code.
+        name: Custom level name. Names are normalized to uppercase and must
+            create a valid Python method name when lowercased.
+        symbol: Compact console prefix used when icons are disabled.
+        icon: Console prefix used when `show_icon=True`.
+        style: Rich style applied to console level prefixes and messages.
+
+    Raises:
+        ValueError: If the level definition is invalid or conflicts with an
+            existing logging level or dynamic method.
+    """
+    spec = parse_runtime_level_spec(
+        num=num,
+        name=name,
+        symbol=symbol,
+        icon=icon,
+        style=style,
+    )
+    _install_default_metadata()
+    validate_level_specs([spec])
+    validate_dynamic_level_methods(TunedLogger, [spec])
+    register_level_specs([spec])
+    install_dynamic_level_methods(TunedLogger, [spec])
+
+
 def _resolve_export_path(path: str | Path | None) -> Path:
     if path is None:
-        return _caller_directory() / "tunning.yml"
+        return _caller_directory() / "tuning.yml"
 
     target_path = Path(path).expanduser()
     if target_path.is_dir():
-        return target_path / "tunning.yml"
+        return target_path / "tuning.yml"
 
     return target_path
 
@@ -417,6 +465,7 @@ def basicConfig(
     errors: str | None = None,
     console: bool = False,
     show_icon: bool = False,
+    show_level: bool = True,
     show_path: bool = False,
     show_time: bool = False,
     boxes: bool = False,
@@ -424,11 +473,11 @@ def basicConfig(
     markup: bool = True,
     defaults_path: str | Path | None = None,
 ) -> None:
-    """Configure the process root logger with tunning defaults.
+    """Configure the process root logger with tuning defaults.
 
     This follows stdlib `logging.basicConfig()` semantics: if the root logger
     already has handlers, the call is ignored unless `force=True` is passed.
-    Without `filename`, a console `TunnedHandler` is installed. With `filename`,
+    Without `filename`, a console `TunedHandler` is installed. With `filename`,
     a detailed file handler is installed; pass `console=True` to install both.
 
     Args:
@@ -452,6 +501,7 @@ def basicConfig(
         errors: File encoding error handling for file handlers.
         console: Also create a console handler when `filename` is provided.
         show_icon: Use configured level icons instead of symbols.
+        show_level: Show level prefixes or boxed level titles in console output.
         show_path: Show source file path in console output.
         show_time: Show timestamps in console output.
         boxes: Render each console log record inside a Rich panel.
@@ -470,6 +520,7 @@ def basicConfig(
 
     _validate_bool("console", console)
     _validate_bool("show_icon", show_icon)
+    _validate_bool("show_level", show_level)
     _validate_bool("show_path", show_path)
     _validate_bool("show_time", show_time)
     _validate_bool("boxes", boxes)
@@ -483,8 +534,8 @@ def basicConfig(
     if filename is not None and stream is not None and not console:
         raise ValueError("'stream' and 'filename' should not be specified together")
 
-    metadata = load_tunning_metadata(defaults_path=defaults_path)
-    _install_tunning_metadata(metadata.level_specs, metadata.prompt_spec)
+    metadata = load_tuning_metadata(defaults_path=defaults_path)
+    _install_tuning_metadata(metadata.level_specs, metadata.prompt_spec)
 
     logging_handlers = handlers
     if logging_handlers is None:
@@ -506,6 +557,7 @@ def basicConfig(
                 _make_console_handler(
                     stream=stream,
                     show_icon=show_icon,
+                    show_level=show_level,
                     show_path=show_path,
                     show_time=show_time,
                     boxes=boxes,
@@ -529,14 +581,16 @@ def _make_console_handler(
     *,
     stream: Any | None,
     show_icon: bool,
+    show_level: bool,
     show_path: bool,
     show_time: bool,
     boxes: bool,
     rich_tracebacks: bool,
     markup: bool,
-) -> TunnedHandler:
+) -> TunedHandler:
     handler_kwargs: dict[str, Any] = {
         "show_icon": show_icon,
+        "show_level": show_level,
         "show_path": show_path,
         "show_time": show_time,
         "boxes": boxes,
@@ -546,7 +600,7 @@ def _make_console_handler(
     if stream is not None:
         handler_kwargs["console"] = Console(file=stream)
 
-    return TunnedHandler(**handler_kwargs)
+    return TunedHandler(**handler_kwargs)
 
 
 def _make_file_handler(
@@ -585,7 +639,7 @@ def _make_file_handler(
 def _resolve_max_bytes(max_bytes: int | str | None) -> int:
     if max_bytes is None:
         warnings.warn(
-            "Rotation enabled, but no max_bytes specified. Using tunning.DEFAULT_MAX_BYTES.",
+            "Rotation enabled, but no max_bytes specified. Using tuning.DEFAULT_MAX_BYTES.",
             stacklevel=4,
         )
         return DEFAULT_MAX_BYTES
@@ -608,7 +662,7 @@ def _resolve_max_bytes(max_bytes: int | str | None) -> int:
 def _resolve_backup_count(backup_count: int | None) -> int:
     if backup_count is None:
         warnings.warn(
-            "Rotation enabled, but no backup_count specified. Using tunning.DEFAULT_BACKUP_COUNT.",
+            "Rotation enabled, but no backup_count specified. Using tuning.DEFAULT_BACKUP_COUNT.",
             stacklevel=4,
         )
         return DEFAULT_BACKUP_COUNT
@@ -658,7 +712,7 @@ def basicConfigFromYaml(
 ) -> None:
     """Configure the process root logger from YAML.
 
-    The packaged `tunning/conf.yml` defaults are loaded first. If `config_path`
+    The packaged `tuning/conf.yml` defaults are loaded first. If `config_path`
     is provided, it is deep-merged on top. The resulting config is applied to
     the real process root logger with stdlib `logging.config.dictConfig()`.
 
@@ -676,12 +730,12 @@ def basicConfigFromYaml(
     if root_logger.handlers and not force:
         return
 
-    resolved_config = load_tunning_root_config(
+    resolved_config = load_tuning_root_config(
         config_path,
         defaults_path=defaults_path,
     )
-    _install_tunning_metadata(resolved_config.level_specs, resolved_config.prompt_spec)
-    _prepare_configured_tunned_loggers(resolved_config.logging_config)
+    _install_tuning_metadata(resolved_config.level_specs, resolved_config.prompt_spec)
+    _prepare_configured_tuned_loggers(resolved_config.logging_config)
 
     if force:
         _close_logger_handlers(root_logger)
@@ -695,8 +749,8 @@ def _install_default_metadata() -> None:
     if _DEFAULT_METADATA_INSTALLED:
         return
 
-    metadata = load_tunning_metadata()
-    _install_tunning_metadata(metadata.level_specs, metadata.prompt_spec)
+    metadata = load_tuning_metadata()
+    _install_tuning_metadata(metadata.level_specs, metadata.prompt_spec)
     _DEFAULT_METADATA_INSTALLED = True
 
 
@@ -720,6 +774,7 @@ def _ensure_zero_configured() -> None:
                 _make_console_handler(
                     stream=None,
                     show_icon=False,
+                    show_level=True,
                     show_path=False,
                     show_time=False,
                     boxes=False,
@@ -733,7 +788,7 @@ def _ensure_zero_configured() -> None:
         _ZERO_CONFIGURING = False
 
 
-def _get_or_create_tunned_logger(name: str) -> TunnedLogger:
+def _get_or_create_tuned_logger(name: str) -> TunedLogger:
     manager = logging.getLogger().manager
     existing = manager.loggerDict.get(name)
 
@@ -741,29 +796,29 @@ def _get_or_create_tunned_logger(name: str) -> TunnedLogger:
         logger = existing
     else:
         previous_logger_class = manager.loggerClass
-        manager.loggerClass = TunnedLogger
+        manager.loggerClass = TunedLogger
         try:
             logger = logging.getLogger(name)
         finally:
             manager.loggerClass = previous_logger_class
 
-    if not isinstance(logger, TunnedLogger):
+    if not isinstance(logger, TunedLogger):
         raise ValueError(
-            f"Logger {name!r} already exists as {type(logger).__name__}; expected TunnedLogger"
+            f"Logger {name!r} already exists as {type(logger).__name__}; expected TunedLogger"
         )
 
     return logger
 
 
-def _install_tunning_metadata(level_specs: list[LevelSpec], prompt_spec: PromptSpec) -> None:
+def _install_tuning_metadata(level_specs: list[LevelSpec], prompt_spec: PromptSpec) -> None:
     global _ROOT_PROMPT_SPEC
 
     register_level_specs(level_specs)
-    install_dynamic_level_methods(TunnedLogger, level_specs)
+    install_dynamic_level_methods(TunedLogger, level_specs)
     _ROOT_PROMPT_SPEC = prompt_spec
 
 
-def _prepare_configured_tunned_loggers(logging_config: dict[str, Any]) -> None:
+def _prepare_configured_tuned_loggers(logging_config: dict[str, Any]) -> None:
     loggers = logging_config.get("loggers")
     if not isinstance(loggers, dict):
         return
@@ -772,7 +827,7 @@ def _prepare_configured_tunned_loggers(logging_config: dict[str, Any]) -> None:
     for name in loggers:
         existing = manager.loggerDict.get(name)
         if existing is None or not isinstance(existing, logging.Logger):
-            _get_or_create_tunned_logger(name)
+            _get_or_create_tuned_logger(name)
 
 
 def _close_logger_handlers(logger: logging.Logger) -> None:
@@ -781,11 +836,11 @@ def _close_logger_handlers(logger: logging.Logger) -> None:
         handler.close()
 
 
-def _first_color_handler(logger: logging.Logger) -> TunnedHandler | None:
+def _first_color_handler(logger: logging.Logger) -> TunedHandler | None:
     current: logging.Logger | None = logger
     while current is not None:
         for handler in current.handlers:
-            if isinstance(handler, TunnedHandler):
+            if isinstance(handler, TunedHandler):
                 return handler
 
         if not current.propagate:
@@ -796,8 +851,8 @@ def _first_color_handler(logger: logging.Logger) -> TunnedHandler | None:
 
 
 __all__ = [
-    "TunnedLogger",
-    "TunnedHandler",
+    "TunedLogger",
+    "TunedHandler",
     "LevelSpec",
     "PromptSpec",
     "ISO_FORMAT",
@@ -805,6 +860,7 @@ __all__ = [
     "DEFAULT_BACKUP_COUNT",
     "getLogger",
     "export",
+    "addLevel",
     "basicConfig",
     "basicConfigFromYaml",
 ]

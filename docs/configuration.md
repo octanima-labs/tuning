@@ -1,47 +1,48 @@
 # Configuration
 
-`tunning` supports two primary configuration paths: programmatic root logger
+`tuning` supports two primary configuration paths: programmatic root logger
 configuration with `basicConfig()` and YAML configuration with
 `basicConfigFromYaml()`.
 
 ## How Configuration Works
 
-- `tunning.basicConfig()` configures the actual process root logger, like `logging.basicConfig()`.
+- `tuning.basicConfig()` configures the actual process root logger, like `logging.basicConfig()`.
 - Calling logger methods before explicit configuration installs console-only zero-config defaults.
 - Repeated `basicConfig()` and `basicConfigFromYaml()` calls do nothing unless `force=True`.
-- `basicConfigFromYaml()` loads packaged defaults from `tunning/conf.yml` first.
+- `basicConfigFromYaml()` loads packaged defaults from `tuning/conf.yml` first.
 - The YAML file you pass in is deep-merged on top of packaged defaults.
 - `basicConfigFromYaml()` preserves `root:` as the real process root logger config.
 - `examples/custom_logger.yml` is intentionally a partial override, not a standalone full config.
-- `tunning.export(...)` writes the packaged default config as a full standalone YAML file.
+- `tuning.export(...)` writes the packaged default config as a full standalone YAML file.
 
 ## Programmatic Configuration
 
 Console output:
 
 ```python
-import tunning
+import tuning
 
-tunning.basicConfig(
+tuning.basicConfig(
     level="INFO",
     show_time=True,
-    datefmt=tunning.ISO_FORMAT,
+    datefmt=tuning.ISO_FORMAT,
     show_icon=True,
+    show_level=True,
 )
 ```
 
 File output:
 
 ```python
-import tunning
+import tuning
 
-tunning.basicConfig(filename="app.log", level="INFO")
+tuning.basicConfig(filename="app.log", level="INFO")
 ```
 
 Console and file output together:
 
 ```python
-tunning.basicConfig(
+tuning.basicConfig(
     filename="app.log",
     console=True,
     level="INFO",
@@ -52,7 +53,7 @@ tunning.basicConfig(
 Rotating file output:
 
 ```python
-tunning.basicConfig(
+tuning.basicConfig(
     filename="app.log",
     level="INFO",
     max_bytes="10 MB",
@@ -63,37 +64,40 @@ tunning.basicConfig(
 `basicConfig(filename=...)` is file-only. Use
 `basicConfig(filename=..., console=True)` for console plus file.
 
+Set `show_level=False` to hide the console level prefix entirely and render only
+the message, apart from any enabled time or path columns.
+
 `max_bytes` and `backup_count` are ignored when `filename` is omitted. If only
 one rotation option is provided, the other uses `DEFAULT_MAX_BYTES` or
 `DEFAULT_BACKUP_COUNT` and emits a warning.
 
 Useful constants:
 
-- `tunning.ISO_FORMAT`: `[%Y-%m-%d %H:%M:%S]`
-- `tunning.DEFAULT_MAX_BYTES`: default size used when only `backup_count` is provided
-- `tunning.DEFAULT_BACKUP_COUNT`: default backup count used when only `max_bytes` is provided
+- `tuning.ISO_FORMAT`: `[%Y-%m-%d %H:%M:%S]`
+- `tuning.DEFAULT_MAX_BYTES`: default size used when only `backup_count` is provided
+- `tuning.DEFAULT_BACKUP_COUNT`: default backup count used when only `max_bytes` is provided
 
 ## YAML Configuration
 
 Generate a full starter config:
 
 ```python
-import tunning
+import tuning
 
-tunning.export("tunning.yml")
+tuning.export("tuning.yml")
 ```
 
 Load the YAML config:
 
 ```python
-import tunning
+import tuning
 
-tunning.basicConfigFromYaml("tunning.yml", force=True)
+tuning.basicConfigFromYaml("tuning.yml", force=True)
 ```
 
 `basicConfigFromYaml()` with no path loads only the packaged default config.
 
-The exported YAML is copied from packaged `tunning/conf.yml`; it does not
+The exported YAML is copied from packaged `tuning/conf.yml`; it does not
 reconstruct live runtime logger state.
 
 ## `export()`
@@ -101,17 +105,17 @@ reconstruct live runtime logger state.
 `export()` writes the packaged default config to a YAML file:
 
 ```python
-import tunning
+import tuning
 
-path = tunning.export()
+path = tuning.export()
 ```
 
 Path behavior:
 
-- `tunning.export()` writes `tunning.yml` next to the calling Python file.
-- `tunning.export("app.yml")` writes exactly `app.yml`.
-- `tunning.export("config")` writes exactly `config` if that path does not already exist as a directory.
-- `tunning.export("configs/")` writes `configs/tunning.yml` if `configs` already exists as a directory.
+- `tuning.export()` writes `tuning.yml` next to the calling Python file.
+- `tuning.export("app.yml")` writes exactly `app.yml`.
+- `tuning.export("config")` writes exactly `config` if that path does not already exist as a directory.
+- `tuning.export("configs/")` writes `configs/tuning.yml` if `configs` already exists as a directory.
 - Missing parent directories are created automatically for explicit file paths.
 - Existing files raise `FileExistsError` unless `force=True` is passed.
 - The returned value is the resolved `Path` that was written.
@@ -140,11 +144,36 @@ Built-in levels must keep stdlib codes: `DEBUG=10`, `INFO=20`, `WARNING=30`,
 `ERROR=40`, and `CRITICAL=50`. Use `WARNING`, not `WARN`. Use `CRITICAL`, not
 `FATAL`.
 
-Custom levels become methods on `TunnedLogger`. For example, `TRACE` creates
+Custom levels become methods on `TunedLogger`. For example, `TRACE` creates
 `logger.trace(...)`, and `MY-CUSTOM-LEVEL` creates
 `logger.my_custom_level(...)`.
 
 Do not define `levels.INPUT`; prompt styling belongs in top-level `prompt:`.
+
+## Runtime Custom Levels
+
+Use `addLevel()` to register a custom level for the current Python process
+without editing YAML:
+
+```python
+import tuning
+
+tuning.addLevel(
+    7,
+    "MY_CUSTOM_LEVEL",
+    symbol="MC",
+    icon="MY",
+    style="bright_blue",
+)
+
+logger = tuning.getLogger(__name__)
+logger.my_custom_level("runtime custom output")
+```
+
+Runtime levels are process-global and only exist until the process exits. They
+do not update `tuning.yml` or exported defaults. Names must be custom level
+names that create valid Python method names; built-in names such as `INFO` and
+aliases such as `WARN` are rejected.
 
 ## `prompt:`
 
@@ -157,18 +186,18 @@ prompt:
   style: 'italic bold black on magenta'
 ```
 
-Prompt icon selection follows the first configured `TunnedHandler`. The spacer
+Prompt icon selection follows the first configured `TunedHandler`. The spacer
 after the prompt text and the user's typed answer are not styled.
 
 ## Handler Options
 
-Handlers follow stdlib `logging.config.dictConfig` syntax. `TunnedHandler` adds
+Handlers follow stdlib `logging.config.dictConfig` syntax. `TunedHandler` adds
 console-specific options:
 
 ```yaml
 handlers:
   console:
-    '()': 'tunning.TunnedHandler'
+    '()': 'tuning.TunedHandler'
     level: TRACE
     log_time_format: "[%Y-%m-%d %H:%M:%S]"
     show_time: false
@@ -181,7 +210,8 @@ handlers:
 ```
 
 `show_icon: true` switches the console prefix from `symbol` to `icon` when an
-icon is configured for the level. `show_icon` is only valid on `TunnedHandler`.
+icon is configured for the level. `show_icon` is only valid on `TunedHandler`.
+`show_level: false` hides the symbol, icon, and level name/title entirely.
 
 Use `log_time_format` to customize YAML-configured console timestamps. Formatter
 `datefmt` is for normal formatter-driven timestamps; Rich console time rendering
@@ -219,19 +249,19 @@ handlers:
 
 ## Logger Selection
 
-Use `tunning.getLogger(name)` instead of directly instantiating loggers:
+Use `tuning.getLogger(name)` instead of directly instantiating loggers:
 
 ```python
-import tunning
+import tuning
 
-logger = tunning.getLogger(__name__)
+logger = tuning.getLogger(__name__)
 ```
 
 `basicConfig()` and `basicConfigFromYaml()` configure the actual process root
-logger. Module loggers created with `tunning.getLogger(__name__)` inherit root
+logger. Module loggers created with `tuning.getLogger(__name__)` inherit root
 handlers, matching stdlib logging practice.
 
-`TunnedLogger.from_yaml()` configures only the requested named logger. If the
+`TunedLogger.from_yaml()` configures only the requested named logger. If the
 YAML only defines `root:`, that section is treated as the template for the named
 logger and does not configure the actual process root logger.
 
@@ -252,7 +282,7 @@ one requested logger at a time.
 
 - Repeated `basicConfig()` and `basicConfigFromYaml()` calls do nothing unless `force=True`.
 - `force=True` replaces root handlers for the basic config APIs.
-- Repeated `TunnedLogger.from_yaml()` calls with the same config are idempotent.
-- Repeated `TunnedLogger.from_yaml()` calls with a different config raise unless you pass `force=True`.
+- Repeated `TunedLogger.from_yaml()` calls with the same config are idempotent.
+- Repeated `TunedLogger.from_yaml()` calls with a different config raise unless you pass `force=True`.
 - `force=True` replaces handlers on the same named logger for `from_yaml()`.
 - Custom level registration is process-global, so conflicting redefinitions are rejected.

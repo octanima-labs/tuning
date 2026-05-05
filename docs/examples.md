@@ -1,57 +1,93 @@
 # Examples
 
+The runnable demo script in the repository lives at `examples/usage.py`.
+
+
 ## Console And File Output
 
 ```python
-import tunning
+import tuning
 
-tunning.basicConfig(
+tuning.basicConfig(
     filename="app.log",
     console=True,
     level="INFO",
     show_time=True,
-    datefmt=tunning.ISO_FORMAT,
+    datefmt=tuning.ISO_FORMAT,
 )
 
-logger = tunning.getLogger(__name__)
+logger = tuning.getLogger(__name__)
 logger.info("application started")
 ```
 
 ## Rotating File Logs
 
 ```python
-import tunning
+import tuning
 
-tunning.basicConfig(
+tuning.basicConfig(
     filename="app.log",
     level="INFO",
     max_bytes="10 MB",
     backup_count=5,
 )
 
-logger = tunning.getLogger(__name__)
+logger = tuning.getLogger(__name__)
 logger.info("rotating file output")
 ```
 
 ## Boxed Console Records
 
 ```python
-import tunning
+import tuning
 
-tunning.basicConfig(level="INFO", boxes=True, show_icon=True)
+tuning.basicConfig(level="INFO", boxes=True, show_icon=True)
 
-logger = tunning.getLogger(__name__)
+logger = tuning.getLogger(__name__)
 logger.success("boxed output")
 ```
 
 ## Styled Prompt
 
 ```python
-import tunning
+import tuning
 
-logger = tunning.getLogger(__name__)
+logger = tuning.getLogger(__name__)
 name = logger.prompt("Your name?")
 logger.info("hello %s", name)
+```
+
+## App Banner
+
+Create a `banners.txt` file in your project:
+
+```text
+### compact
+TUNING
+```
+
+Print a named banner, or omit `name` to select a random banner that fits the
+terminal width:
+
+```python
+import tuning
+
+tuning.banner(name="compact")
+```
+
+Customize the Rich panel style, padding, or remove the border:
+
+```python
+import tuning
+
+tuning.banner(
+    name="compact",
+    border_style="bright_cyan",
+    text_style="bold bright_magenta",
+    padding=(0, 2),
+)
+
+tuning.banner(name="compact", border=False, padding=(1, 4))
 ```
 
 ## YAML Configuration
@@ -59,9 +95,9 @@ logger.info("hello %s", name)
 Export a full starter config:
 
 ```python
-import tunning
+import tuning
 
-tunning.export("tunning.yml")
+tuning.export("tuning.yml")
 ```
 
 Use a small override file:
@@ -81,12 +117,10 @@ root:
 Load YAML configuration:
 
 ```python
-import tunning
+import tuning
 
-tunning.basicConfigFromYaml("tunning.yml", force=True)
+tuning.basicConfigFromYaml("tuning.yml", force=True)
 
-logger = tunning.getLogger(__name__)
+logger = tuning.getLogger(__name__)
 logger.info("configured from YAML")
 ```
-
-The runnable demo script in the repository lives at `examples/usage.py`.
