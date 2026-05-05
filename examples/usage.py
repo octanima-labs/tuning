@@ -167,7 +167,7 @@ def _cli() -> ArgumentParser:
 
 
 if __name__ == "__main__":
-    tuning.banner()
+    tuning.banner(background_style="on yellow", border_style="on red")
     args: Namespace = _cli().parse_args()
     command = args.command or "basic"
     print(f"You can still print normally to the terminal (configuration mode: {command})")

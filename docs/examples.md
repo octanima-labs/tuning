@@ -75,7 +75,7 @@ import tuning
 tuning.banner(name="compact")
 ```
 
-Customize the Rich panel style, padding, or remove the border:
+Customize the Rich panel style, background, box, padding, or remove the border:
 
 ```python
 import tuning
@@ -84,7 +84,9 @@ tuning.banner(
     name="compact",
     border_style="bright_cyan",
     text_style="bold bright_magenta",
+    background_style="on black",
     padding=(0, 2),
+    box="HEAVY",
 )
 
 tuning.banner(name="compact", border=False, padding=(1, 4))

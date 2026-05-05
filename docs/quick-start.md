@@ -50,5 +50,5 @@ tuning.banner()
 ```
 
 When styles are omitted, `banner()` picks random bold colors for the text and
-border. Pass Rich style strings, `padding=...`, or `border=False` to customize
-the rendering.
+border. Pass Rich style strings, `background_style=...`, `box=...`,
+`padding=...`, or `border=False` to customize the rendering.

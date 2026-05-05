@@ -73,7 +73,7 @@ Run formatting, linting, and type checks:
 Build documentation:
 
 ```bash
-./.venv/bin/mkdocs build --strict
+./.venv/bin/sphinx-build -W -b dirhtml docs site
 ```
 
 Run pre-commit hooks:

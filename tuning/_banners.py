@@ -1,19 +1,18 @@
 from __future__ import annotations
 
-
 import inspect
 import random
 import re
 from pathlib import Path
 from typing import TypeAlias
 
+from rich import box as rich_box
+from rich.box import Box
 from rich.cells import cell_len
 from rich.console import Console
 from rich.padding import Padding
 from rich.panel import Panel
 from rich.text import Text
-from rich.box import Box
-
 
 _BANNER_FILENAME = "banners.txt"
 _BANNER_NAME_PATTERN = re.compile(r"^[a-z0-9]+(?:_[a-z0-9]+)*$")
@@ -36,18 +35,9 @@ _RANDOM_STYLE_COLORS = (
     "bright_cyan",
     "bright_white",
 )
-MEGA_BOLD = Box(
-    "████\n"
-    "█  █\n"
-    "████\n"
-    "█  █\n"
-    "████\n"
-    "█  █\n"
-    "████\n"
-    "████\n"
-)
+MEGA_BOLD = Box("████\n█  █\n████\n█  █\n████\n█  █\n████\n████\n")
 _PaddingSpec: TypeAlias = tuple[int] | tuple[int, int] | tuple[int, int, int, int]
-
+_BoxSpec: TypeAlias = str | Box
 
 
 def banner(
@@ -58,6 +48,8 @@ def banner(
     text_style: str | None = None,
     padding: tuple[int] | tuple[int, int] | tuple[int, int, int, int] = (0, 0),
     border: bool = True,
+    box: str | Box | None = None,
+    background_style: str | None = None,
 ) -> str | None:
     """Print an application banner from a banner file.
 
@@ -79,6 +71,11 @@ def banner(
             `(vertical, horizontal)`, or `(top, right, bottom, left)`.
         border: Render the banner inside a Rich panel when true. When false,
             only styled text and padding are rendered.
+        box: Optional Rich box style name or `rich.box.Box` object. String
+            names are matched case-insensitively against `rich.box` constants
+            and the custom `MEGA_BOLD` style.
+        background_style: Optional Rich style for the panel background. When
+            `border=False`, this style is applied to the padding area.
 
     Returns:
         The exact banner body printed, or `None` when no banner fits the
@@ -93,6 +90,7 @@ def banner(
     resolved_padding = _normalize_padding(padding)
     if not isinstance(border, bool):
         raise ValueError("border must be a boolean")
+    resolved_box = _resolve_box(box)
     resolved_border_style = border_style or _random_style()
     resolved_text_style = text_style or _random_style()
     banner_path = _resolve_banner_path(path)
@@ -108,6 +106,8 @@ def banner(
             text_style=resolved_text_style,
             padding=padding,
             border=border,
+            box=resolved_box,
+            background_style=background_style,
         )
         return None
 
@@ -118,6 +118,8 @@ def banner(
         text_style=resolved_text_style,
         padding=padding,
         border=border,
+        box=resolved_box,
+        background_style=background_style,
     )
     return selected_banner
 
@@ -282,6 +284,25 @@ def _normalize_padding(padding: _PaddingSpec) -> tuple[int, int, int, int]:
     return top, right, bottom, left
 
 
+def _resolve_box(box: _BoxSpec | None) -> Box | None:
+    if box is None:
+        return None
+    if isinstance(box, Box):
+        return box
+    if not isinstance(box, str):
+        raise ValueError("box must be a rich.box style name, MEGA_BOLD, or rich.box.Box")
+
+    box_name = box.strip().upper()
+    if box_name == "MEGA_BOLD":
+        return MEGA_BOLD
+
+    rich_box_style = getattr(rich_box, box_name, None)
+    if isinstance(rich_box_style, Box):
+        return rich_box_style
+
+    raise ValueError("box must be one of the styles defined in rich.box or MEGA_BOLD")
+
+
 def _print_banner(
     banner_text: str,
     console: Console,
@@ -290,17 +311,37 @@ def _print_banner(
     text_style: str,
     padding: _PaddingSpec,
     border: bool,
+    box: Box | None,
+    background_style: str | None,
 ) -> None:
     text = Text(banner_text, style=text_style)
     if not border:
-        console.print(Padding(text, padding))
+        if background_style is None:
+            console.print(Padding(text, padding))
+        else:
+            console.print(Padding(text, padding, style=background_style))
         return
 
-    console.print(
-        Panel.fit(
+    if box is None and background_style is None:
+        panel = Panel.fit(text, border_style=border_style, padding=padding)
+    elif box is None:
+        assert background_style is not None
+        panel = Panel.fit(
             text,
-            box=MEGA_BOLD, # TODO: control via param
             border_style=border_style,
             padding=padding,
+            style=background_style,
         )
-    )
+    elif background_style is None:
+        panel = Panel.fit(text, box=box, border_style=border_style, padding=padding)
+    else:
+        assert background_style is not None
+        panel = Panel.fit(
+            text,
+            box=box,
+            border_style=border_style,
+            padding=padding,
+            style=background_style,
+        )
+
+    console.print(panel)

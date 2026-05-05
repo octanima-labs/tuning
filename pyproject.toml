@@ -45,9 +45,12 @@ dev = [
     "wheel>=0.45.1",
 ]
 docs = [
-    "mkdocs>=1.6",
-    "mkdocs-material>=9.5",
-    "mkdocstrings[python]>=0.27",
+    "myst-parser>=4",
+    "pydata-sphinx-theme>=0.16",
+    "sphinx>=8",
+    "sphinx-autodoc-typehints>=3",
+    "sphinx-copybutton>=0.5",
+    "sphinx-design>=0.6",
 ]
 cli = [
     "typer>=0.25.1",

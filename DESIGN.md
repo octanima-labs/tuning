@@ -57,7 +57,7 @@ Implemented:
 - mypy type checking configuration
 - pre-commit hook configuration
 - GitHub Actions CI across Python 3.11 through 3.14
-- MkDocs documentation generated from public API docstrings
+- Sphinx documentation generated from public API docstrings
 - example script under `examples/`
 - user-facing config reference in `README.md`
 
@@ -90,7 +90,7 @@ Package files:
 - `tuning/_banners.py`: banner file discovery, parsing, selection, and rendering
 - `tuning/conf.yml`: packaged default config
 - `docs/`: generated API reference and guide pages
-- `mkdocs.yml`: documentation site configuration
+- `docs/conf.py`: documentation site configuration
 
 Examples:
 - `examples/usage.py`: prototype usage example with selectable config modes
@@ -303,84 +303,15 @@ Rules:
   - [X] Basic banner in place
   - [X] Improve banner, make it more "tuned".
 - [ ] Icon design
-  - [ ] Remove background
-  - [ ] Change marker letters from `graffiti` to `log` (or remove the letters from both markers)
-  - [ ] Design a `favicon`, rounded (or no background at all), simple. Maybe a `T` drawn with marker, with the marker being the pole of the `T`
-- [ ] When all the previous are done, upgrade version to 1.0 and publish
+  - [X] Remove background
+  - [X] Can you replace the letters "GRAFFITI" on the pink marker and replace them by "LOG". The other marker, the blue one, should not be modified. The boo Change marker letters from `graffiti` to `log` (or remove the letters from both markers)
+  - [ ] Make the icon smaller in the docs and `README.md`
+  - [X] When all the previous are done, upgrade version to 1.0 and publish
 - Version 1.1: 
-  - [ ] Plan migratin plan to leave MkDocs (version 2.0 will break a lot of things, so I do not want to update, but that means that current version won't get updates any more, so I need to migrate). Possible candidates:
-    - Docosaurus (versioned products/docs)
-    - VitePress (Vue ecosystem)
-    - Astro starlight (minimal JS)
-    - Sphinx (+ MyST Markdown): nice for Python library/API docs
-    - mdBook (for Rust projects)
-    - Zola (light-weight, may lack some features)
+  - [X] Migrate documentation to Sphinx + MyST + PyData theme.
   - [ ] Add pictures to the readme/conf
   - [ ] Add [`rich-gradient`](https://github.com/maxludden/rich-gradient) support. Maybe only as optional dependency, Im not sure if any wrapper is necessary.
   - [ ] In panel, allow to control:
-    - [ ] background style
     - [ ] Optional, not shown by default: show version in the banner (from toml)
     - [ ] Optional, not shown by default: show author in the banner (from toml)
     - [ ] Optional, not shown by default: show foot note in the banner (from toml, might require creating a custom key)
-    - [ ] Allow to pass param `box` to `tuning.banner()` to control the box style of the panel. 
-      - If `box` is None: do not pass param to `Panel` (that would cause an `AttributeError`). Just omit it.
-      - If `box` is provided: validate it (should be one of the styles defined in `rich.box` or the custom box style `MEGA_BOLD`), then pass it to `Panel` like `Panel(box=BOX_STYLE, ...)`
-
----
-
-Blocky
-- ansi shadow
-- Blur vision asci
-- shaded blocky
-- pagga
-- Delta Corps Priest 1
-
-Art
-- bloody
-- ghost
-- whimsy
-- stronger than all
-- the edge
-- merlin1
-- Patorjk\'s Cheese
-- caligraphy
-- Fire font K
-- fun face
-
-
-- El banner puede ser, lineas de log con los diferentes estilos, haciendo una T 
-
-```python
-"""
- oooooooooooooooo      DEBUG
- oooooooooooooooo      TRACE
-       oooo         INFO
-       oooo         SUCCESS
-       oooo         WANRING
-       oooo         ERROR
-       oooo         FATAL
-"""
-
-def coloricon():
-    import rich
-    console = rich.get_console()
-
-    console.print(" " * 16, style="reverse dim magenta")
-    console.print(" " * 16, style="reverse magenta")
-    console.print("      [reverse cyan]    [/reverse cyan]      ")
-    console.print("      [reverse green]    [/reverse green]      ")
-    console.print("      [reverse yellow]    [/reverse yellow]      ")
-    console.print("      [reverse red]    [/reverse red]      ")
-    console.print("      [reverse white]    [/reverse white]      ")
-```
-O en lugar de en horizontal, hacer franjas verticales
-O al reves, pintar las lineas enteras, y dejar huecos para que se lea `tunning`
-
-  - Lo mismo pero en vez de al principio, al final
-  - O hacerlo con las caidas de las letras tunning, extendiendo la t y la n hacia abajo con los distintos colores.
-  - Tambien puedo usar fuentes asciiart directamente y colorearlas
-
-
-A simple 2D cartoon sketch of a dull, gray, old logbook open on a plain white background. Across the open pages, the word "TUNING" is written in a vibrant, neon, underground street graffiti style using thick markers. The graffiti is highly colorful, has a slight drip effect, and curves naturally to follow the bend of the flat cartoon pages. The overall style is entirely hand-drawn and non-realistic, creating a stark contrast between the boring, plain sketch of the old book and the popping neon graffiti. A couple of thick, colorful graffiti markers are lying next to the book on the blank background.
-
-

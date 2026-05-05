@@ -6,6 +6,8 @@ from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
+from rich import box as rich_box
+from rich.box import Box
 from rich.console import Console
 from rich.padding import Padding
 from rich.panel import Panel
@@ -91,6 +93,68 @@ def test_banner_applies_custom_panel_styles_and_padding(
     assert panel.renderable.style == "green"
 
 
+def test_banner_applies_named_box_case_insensitively(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    console = _record_console(monkeypatch)
+    banner_path = tmp_path / "banners.txt"
+    _write_banners(banner_path, "### only\nBOXED\n")
+
+    selected = tuning.banner(banner_path, box="rounded")
+
+    assert selected == "BOXED\n"
+    panel = console.renderables[0]
+    assert isinstance(panel, Panel)
+    assert panel.box is rich_box.ROUNDED
+
+
+def test_banner_applies_mega_bold_box(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    console = _record_console(monkeypatch)
+    banner_path = tmp_path / "banners.txt"
+    _write_banners(banner_path, "### only\nMEGA\n")
+
+    tuning.banner(banner_path, box="MEGA_BOLD")
+
+    panel = console.renderables[0]
+    assert isinstance(panel, Panel)
+    assert panel.box is banners_module.MEGA_BOLD
+
+
+def test_banner_accepts_box_object(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    console = _record_console(monkeypatch)
+    banner_path = tmp_path / "banners.txt"
+    _write_banners(banner_path, "### only\nOBJECT\n")
+    custom_box = Box("┌─┬┐\n│ ││\n├─┼┤\n│ ││\n├─┼┤\n├─┼┤\n│ ││\n└─┴┘\n")
+
+    tuning.banner(banner_path, box=custom_box)
+
+    panel = console.renderables[0]
+    assert isinstance(panel, Panel)
+    assert panel.box is custom_box
+
+
+def test_banner_applies_panel_background_style(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    console = _record_console(monkeypatch)
+    banner_path = tmp_path / "banners.txt"
+    _write_banners(banner_path, "### only\nBACKGROUND\n")
+
+    tuning.banner(banner_path, background_style="on blue")
+
+    panel = console.renderables[0]
+    assert isinstance(panel, Panel)
+    assert panel.style == "on blue"
+
+
 def test_banner_defaults_to_independent_random_styles(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -133,6 +197,21 @@ def test_banner_can_render_without_border_but_with_padding(
     assert (renderable.top, renderable.right, renderable.bottom, renderable.left) == (1, 2, 3, 4)
     assert isinstance(renderable.renderable, Text)
     assert renderable.renderable.style == "cyan"
+
+
+def test_banner_applies_borderless_background_style(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    console = _record_console(monkeypatch)
+    banner_path = tmp_path / "banners.txt"
+    _write_banners(banner_path, "### only\nPLAIN\n")
+
+    tuning.banner(banner_path, border=False, background_style="on magenta")
+
+    renderable = console.renderables[0]
+    assert isinstance(renderable, Padding)
+    assert renderable.style == "on magenta"
 
 
 def test_banner_accepts_directory_path(
@@ -286,6 +365,22 @@ def test_banner_rejects_non_boolean_border(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="border"):
         tuning.banner(banner_path, border="false")  # type: ignore[arg-type]
+
+
+def test_banner_rejects_invalid_box_name(tmp_path: Path) -> None:
+    banner_path = tmp_path / "banners.txt"
+    _write_banners(banner_path, "### only\nCONTENT\n")
+
+    with pytest.raises(ValueError, match="box"):
+        tuning.banner(banner_path, box="not_a_box")
+
+
+def test_banner_validates_box_when_border_is_false(tmp_path: Path) -> None:
+    banner_path = tmp_path / "banners.txt"
+    _write_banners(banner_path, "### only\nCONTENT\n")
+
+    with pytest.raises(ValueError, match="box"):
+        tuning.banner(banner_path, border=False, box="not_a_box")
 
 
 def test_banner_raises_for_missing_discovered_banner_file(

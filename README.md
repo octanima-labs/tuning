@@ -94,7 +94,9 @@ tuning.banner(
     name="ansi_shadow",
     border_style="bright_cyan",
     text_style="bold bright_magenta",
+    background_style="on black",
     padding=(0, 2),
+    box="HEAVY",
 )
 ```
 
@@ -149,7 +151,7 @@ The short version:
 ./.venv/bin/python -m pytest
 ./.venv/bin/ruff check .
 ./.venv/bin/mypy tuning tests
-./.venv/bin/mkdocs build --strict
+./.venv/bin/sphinx-build -W -b dirhtml docs site
 ```
 
 ## License

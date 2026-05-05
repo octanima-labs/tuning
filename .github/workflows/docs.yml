@@ -38,7 +38,7 @@ jobs:
           python -m pip install -e ".[docs]"
 
       - name: Build docs
-        run: mkdocs build --strict
+        run: sphinx-build -W -b dirhtml docs site
 
       - name: Configure Pages
         uses: actions/configure-pages@v5

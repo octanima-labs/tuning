@@ -27,14 +27,14 @@
 - Format check: `./.venv/bin/ruff format --check .`.
 - Lint: `./.venv/bin/ruff check .`.
 - Type check: `./.venv/bin/mypy tuning tests`.
-- Docs build: `./.venv/bin/mkdocs build --strict` after installing `.[docs]`.
+- Docs build: `./.venv/bin/sphinx-build -W -b dirhtml docs site` after installing `.[docs]`.
 - Pre-commit: `./.venv/bin/pre-commit run --all-files`.
 - Basic example: `./.venv/bin/python examples/usage.py`.
 
 ## Documentation
 
-Public API docs are generated from source docstrings with MkDocs and
-mkdocstrings. Keep public docstrings current when changing public APIs.
+Public API docs are generated from source docstrings with Sphinx autodoc. Keep
+public docstrings current when changing public APIs.
 
 The generated site output is written to `site/`, which is ignored by git.
 
@@ -68,7 +68,7 @@ The generated site output is written to `site/`, which is ignored by git.
 - The current runtime roadmap is stabilized for this prototype pass. Treat grouped boxes as a follow-up feature, not current implementation scope.
 - Packaging metadata and editable install behavior have been verified; docs URLs are a packaging follow-up, not a runtime gap.
 - Quality gates use pytest, Ruff, mypy, pre-commit, and GitHub Actions across Python 3.11 through 3.14.
-- Public API docs are generated with MkDocs and mkdocstrings from source docstrings. Keep docstrings current when changing public APIs.
+- Public API docs are generated with Sphinx autodoc from source docstrings. Keep docstrings current when changing public APIs.
 
 ## Doc Reliability
 - `README.md` is the user-facing usage guide.

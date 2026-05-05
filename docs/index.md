@@ -11,4 +11,16 @@ configuration, rotating file logs, custom levels, and a styled prompt helper.
 - [Quick Start](quick-start.md): basic setup and first log messages.
 - [Configuration](configuration.md): programmatic and YAML configuration notes.
 - [Examples](examples.md): practical snippets.
-- [API Reference](api.md): generated from public source docstrings.
+- [API Reference](api): generated from public source docstrings.
+- [Development](development.md): contributor commands and checks.
+
+```{toctree}
+:maxdepth: 2
+:caption: Contents
+
+quick-start
+configuration
+examples
+api
+development
+```
