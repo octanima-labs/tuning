@@ -148,6 +148,7 @@ tuning.basicConfigFromYaml("tuning.yml", force=True)
 - [Examples](https://octanima-labs.github.io/tuning/examples/)
 - [API Reference](https://octanima-labs.github.io/tuning/api/)
 - [Development](https://octanima-labs.github.io/tuning/development/)
+- [Changelog](./CHANGELOG.md)
 
 ## Development
 
