@@ -2,6 +2,10 @@
 
 ![library icon](./docs/icon.png)
 
+<p align="center">
+    <img src="./docs/icon.png" alt="tuning icon" width=500>
+</p>
+
 `tuning` is a small but stylish Python logging helper for CLI applications.
 It builds on stdlib `logging` and Rich to provide readable terminal logs,
 rotating file logs, YAML configuration, custom levels, and a styled prompt

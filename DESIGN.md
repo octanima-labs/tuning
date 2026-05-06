@@ -302,13 +302,13 @@ Rules:
 - [X] Design a banner/icon for the library.
   - [X] Basic banner in place
   - [X] Improve banner, make it more "tuned".
-- [ ] Icon design
-  - [X] Remove background
-  - [X] Can you replace the letters "GRAFFITI" on the pink marker and replace them by "LOG". The other marker, the blue one, should not be modified. The boo Change marker letters from `graffiti` to `log` (or remove the letters from both markers)
+- [ ] Improve docs
   - [ ] Make the icon smaller in the docs and `README.md`
-  - [X] When all the previous are done, upgrade version to 1.0 and publish
+  - [ ] Change favicon.
+  - [ ] Section navigation seems to be broken, or unused 
+- [X] Migrate documentation to Sphinx + MyST + PyData theme.
+- [ ] When all the previous are done, upgrade version to 1.0 and publish
 - Version 1.1: 
-  - [X] Migrate documentation to Sphinx + MyST + PyData theme.
   - [ ] Add pictures to the readme/conf
   - [ ] Add [`rich-gradient`](https://github.com/maxludden/rich-gradient) support. Maybe only as optional dependency, Im not sure if any wrapper is necessary.
   - [ ] In panel, allow to control:

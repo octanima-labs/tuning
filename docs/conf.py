@@ -34,9 +34,11 @@ napoleon_numpy_docstring = False
 html_theme = "pydata_sphinx_theme"
 html_title = "tuning"
 html_logo = "icon.png"
+html_favicon = "_static/favicons/favicon.ico"
 html_baseurl = "https://octanima-labs.github.io/tuning/"
 html_theme_options = {
     "github_url": "https://github.com/octanima-labs/tuning",
     "show_toc_level": 2,
 }
-html_static_path: list[str] = []
+html_static_path = ["_static"]
+templates_path = ["_templates"]
