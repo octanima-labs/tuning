@@ -1,10 +1,10 @@
-# Tuned logging - `tuning`
+# Tuned logging
 
 <p align="center">
     <img src="./docs/logo.png" alt="tuning icon" width=500>
 </p>
 
-**Colorful customizable dual-logging** module for CLI applications. Emojis included 😉.
+**Colorful and customizable dual-logging** module for CLI applications. Emojis included 😉.
 
 The idea is simple, display **human-readable and colorful terminal** logs, while keeping **file** logs **detailed** and sober.
 

@@ -1,4 +1,4 @@
-# Tuned logging - `tuning`
+# Tuned logging
 
 ::::{grid} 1 1 2 2
 :gutter: 3
@@ -20,7 +20,7 @@
 
 ::::
 
-**Colorful customizable dual-logging** module for CLI applications. Emojis included 😉.
+**Colorful and customizable dual-logging** module for CLI applications. Emojis included 😉.
 
 The idea is simple, display **human-readable and colorful terminal** logs, while keeping **file** logs **detailed** and sober.
 
