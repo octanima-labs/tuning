@@ -8,7 +8,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 project = "tuning"
 author = "octanima-labs"
 copyright = "2026, octanima-labs"
-release = "0.1.0"
+release = "1.0.0"
 
 extensions = [
     "myst_parser",

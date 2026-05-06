@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tuning"
-version = "0.1.0"
+version = "1.0.0"
 description = "Colorful and customizable logging module for CLI applications."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -15,7 +15,7 @@ authors = [
 ]
 keywords = ["cli", "logging", "rich", "yaml"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",

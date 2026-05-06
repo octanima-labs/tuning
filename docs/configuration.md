@@ -275,8 +275,8 @@ loggers:
     propagate: false
 ```
 
-Unexpected logger entries are rejected because this prototype only configures
-one requested logger at a time.
+Unexpected logger entries are rejected because this path configures one requested
+logger at a time.
 
 ## Reconfiguration Rules
 
