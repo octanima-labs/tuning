@@ -302,13 +302,13 @@ Rules:
 - [X] Design a banner/icon for the library.
   - [X] Basic banner in place
   - [X] Improve banner, make it more "tuned".
-- [ ] Improve docs
-  - [ ] Make the icon smaller in the docs and `README.md`
-  - [ ] Change favicon.
-  - [ ] Section navigation seems to be broken, or unused 
+- [X] Improve docs
+  - [X] Make the icon smaller in the docs and `README.md`
+  - [X] Update favicon.
+  - [X] Section navigation seems to be ~~broken~~ -> **unused**
 - [X] Migrate documentation to Sphinx + MyST + PyData theme.
 - [ ] When all the previous are done, upgrade version to 1.0 and publish
-- Version 1.1: 
+- Version 1.1:
   - [ ] Add pictures to the readme/conf
   - [ ] Add [`rich-gradient`](https://github.com/maxludden/rich-gradient) support. Maybe only as optional dependency, Im not sure if any wrapper is necessary.
   - [ ] In panel, allow to control:

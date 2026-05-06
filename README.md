@@ -1,26 +1,31 @@
-# tuning
-
-![library icon](./docs/icon.png)
+# Tuned logging - `tuning`
 
 <p align="center">
-    <img src="./docs/icon.png" alt="tuning icon" width=500>
+    <img src="./docs/logo.png" alt="tuning icon" width=500>
 </p>
 
-`tuning` is a small but stylish Python logging helper for CLI applications.
-It builds on stdlib `logging` and Rich to provide readable terminal logs,
-rotating file logs, YAML configuration, custom levels, and a styled prompt
-helper without wrapping your CLI or TUI framework.
+**Colorful customizable dual-logging** module for CLI applications. Emojis included 😉.
+
+The idea is simple, display **human-readable and colorful terminal** logs, while keeping **file** logs **detailed** and sober.
+
+It builds on [stdlib _logging_](https://docs.python.org/3/library/logging.html) and [_Rich_](https://github.com/textualize/rich), so you can use it as usual:
+- logging via named functions: `logger.my_custom_lvl()`
+- natural language defined styles: `bold italic white on red`
+
+
 
 ## Features
 
-- Colored console output through `TunedHandler`
-- Stdlib-like root logger configuration through `basicConfig()`
-- YAML-driven configuration with packaged defaults
-- Rotating file logs through stdlib handlers
-- Custom levels such as `TRACE` and `SUCCESS`
-- Styled interactive prompts through `logger.prompt(...)`
+**Easy to use**
+- Stdlib-like root logger configuration through `basicConfig()`, including rotating logs.
+- YAML-driven configuration (we got your back with the defaults)
+
+**Fully customizable**
+- Logging levels: icon, symbol, and style. (already added `TRACE` and `SUCCESS`)
+- Colorful console output, with optional information: `timestamp` and `path` (caller file).
+- Styled interactive prompts, with default value: `logger.prompt(...)`
 - Custom app banners through `banner(...)`
-- Optional boxed console records with Rich panels
+- *Inside-of-the-box*: experimental display mode which encloses console records into boxes. Beautiful, but
 
 > Optional extras are available for CLI and TUI integrations, but `tuning` does not wrap Typer or Textual.
 
@@ -160,4 +165,10 @@ The short version:
 
 ## License
 
-`tuning` is distributed under the MIT license.
+**`tuning`** is distributed under the MIT license.
+
+---
+<p align="center"><code>We 💙 CLI</code></p>
+<p align="center">
+    <img src="./docs/title_logo_nav.png" alt="tuning icon" width=300>
+</p>

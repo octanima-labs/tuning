@@ -1,10 +1,32 @@
-# tuning
+# Tuned logging - `tuning`
 
-![icon](./icon.png)
+::::{grid} 1 1 2 2
+:gutter: 3
 
-`tuning` is a small logging helper for CLI applications. It builds on Python's
-stdlib `logging` package and Rich to provide styled console output, YAML-driven
-configuration, rotating file logs, custom levels, and a styled prompt helper.
+:::{grid-item}
+```{image} ./logo.png
+:alt: tuning logo
+:class: dark-light
+:width: 300px
+```
+:::
+
+:::{grid-item}
+```{image} ./title_logo_nav.png
+:alt: tuning banner
+:class: dark-light
+:width: 300px
+:::
+
+::::
+
+**Colorful customizable dual-logging** module for CLI applications. Emojis included 😉.
+
+The idea is simple, display **human-readable and colorful terminal** logs, while keeping **file** logs **detailed** and sober.
+
+It builds on [stdlib _logging_](https://docs.python.org/3/library/logging.html) and [_Rich_](https://github.com/textualize/rich), so you can use it as usual:
+- logging via named functions: `logger.my_custom_lvl()`
+- natural language defined styles: `bold italic white on red`
 
 ## Index
 
