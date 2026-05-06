@@ -1,28 +1,19 @@
-# Tuned logging
+# Tune your logs
 
-::::{grid} 1 1 2 2
-:gutter: 3
 
-:::{grid-item}
 ```{image} ./logo.png
 :alt: tuning logo
 :class: dark-light
-:width: 300px
+:width: 500px
+:align: center
 ```
-:::
 
-:::{grid-item}
-```{image} ./title_logo_nav.png
-:alt: tuning banner
-:class: dark-light
-:width: 300px
-:::
+<br>
 
-::::
-
-**Colorful and customizable dual-logging** module for CLI applications. Emojis included 😉.
+`tuning` is a **colorful and customizable dual-logging** module for CLI applications. Emojis included 😉.
 
 The idea is simple, display **human-readable and colorful terminal** logs, while keeping **file** logs **detailed** and sober.
+
 
 It builds on [stdlib _logging_](https://docs.python.org/3/library/logging.html) and [_Rich_](https://github.com/textualize/rich), so you can use it as usual:
 - logging via named functions: `logger.my_custom_lvl()`
