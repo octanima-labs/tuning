@@ -32,7 +32,7 @@ It builds on [stdlib _logging_](https://docs.python.org/3/library/logging.html) 
 ## Install
 
 ```bash
-pip install tuning
+pip install 2ning
 ```
 
 For local development:

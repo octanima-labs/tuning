@@ -3,7 +3,7 @@
 Install the package:
 
 ```bash
-pip install tuning
+pip install 2ning
 ```
 
 Create a logger and write messages:
